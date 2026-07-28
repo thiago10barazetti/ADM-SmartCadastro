@@ -1,8 +1,18 @@
+from collections import Counter
+from collections.abc import Callable
 from decimal import Decimal
+import re
 from tkinter import messagebox, simpledialog, ttk
 
 import customtkinter as ctk
 
+from database.description_repository import (
+    salvar_descricao_aprendida,
+)
+from database.settings_repository import (
+    adicionar_palavras_removidas,
+    carregar_configuracoes,
+)
 from interface.styles import (
     COR_AZUL,
     COR_AZUL_CLARO,
@@ -15,9 +25,6 @@ from interface.styles import (
     TAMANHO_TABELA,
 )
 from models.produto import Produto
-from database.description_repository import (
-    salvar_descricao_aprendida,
-)
 
 
 def formatar_decimal(
@@ -37,10 +44,56 @@ def formatar_decimal(
     return texto.replace(".", ",")
 
 
+def extrair_palavras(texto: str) -> list[str]:
+    """Extrai palavras e números de uma descrição."""
+
+    return re.findall(
+        r"[A-ZÀ-Ü0-9]+",
+        texto.upper(),
+    )
+
+
+def identificar_palavras_removidas(
+    descricao_anterior: str,
+    descricao_nova: str,
+) -> list[str]:
+    """
+    Identifica quais palavras desapareceram após a edição.
+
+    A ordem original das palavras é preservada.
+    """
+
+    palavras_anteriores = extrair_palavras(
+        descricao_anterior
+    )
+
+    contagem_nova = Counter(
+        extrair_palavras(descricao_nova)
+    )
+
+    removidas: list[str] = []
+
+    for palavra in palavras_anteriores:
+        if contagem_nova[palavra] > 0:
+            contagem_nova[palavra] -= 1
+            continue
+
+        if palavra not in removidas:
+            removidas.append(palavra)
+
+    return removidas
+
+
 class ProductTable(ctk.CTkFrame):
     """Tabela que exibe e permite revisar os produtos."""
 
-    def __init__(self, master) -> None:
+    def __init__(
+        self,
+        master,
+        ao_alterar_regras: (
+            Callable[[], None] | None
+        ) = None,
+    ) -> None:
         super().__init__(
             master,
             fg_color=COR_FUNDO,
@@ -50,6 +103,7 @@ class ProductTable(ctk.CTkFrame):
         )
 
         self.produtos: list[Produto] = []
+        self.ao_alterar_regras = ao_alterar_regras
 
         self.grid_columnconfigure(0, weight=1)
         self.grid_rowconfigure(0, weight=1)
@@ -225,7 +279,10 @@ class ProductTable(ctk.CTkFrame):
         estilo.map(
             "Produtos.Treeview.Heading",
             background=[
-                ("active", COR_AZUL_CLARO_HOVER),
+                (
+                    "active",
+                    COR_AZUL_CLARO_HOVER,
+                ),
             ],
         )
 
@@ -284,7 +341,6 @@ class ProductTable(ctk.CTkFrame):
         if not linha:
             return
 
-        # A descrição final é a terceira coluna.
         if coluna != "#3":
             return
 
@@ -328,9 +384,51 @@ class ProductTable(ctk.CTkFrame):
             )
             return
 
+        palavras_removidas = (
+            identificar_palavras_removidas(
+                descricao_anterior=descricao_sem_codigo,
+                descricao_nova=nova_descricao,
+            )
+        )
+
+        configuracoes = carregar_configuracoes()
+
+        palavras_ja_removidas = set(
+            configuracoes["palavras_removidas"]
+        )
+
+        palavras_adicionar: list[str] = []
+
+        for palavra in palavras_removidas:
+            if palavra in palavras_ja_removidas:
+                continue
+
+            remover_globalmente = messagebox.askyesno(
+                "Nova regra de remoção",
+                (
+                    f'Você removeu a palavra "{palavra}".\n\n'
+                    "Deseja removê-la automaticamente "
+                    "de todas as descrições futuras?\n\n"
+                    "Sim: adicionar às palavras removidas.\n"
+                    "Não: aplicar somente neste produto."
+                ),
+                parent=self,
+            )
+
+            if remover_globalmente:
+                palavras_adicionar.append(
+                    palavra
+                )
+
+        palavras_realmente_adicionadas = (
+            adicionar_palavras_removidas(
+                palavras_adicionar
+            )
+        )
+
         salvar_descricao_aprendida(
-        descricao_original=produto.descricao_original,
-        descricao_final=nova_descricao,
+            descricao_original=produto.descricao_original,
+            descricao_final=nova_descricao,
         )
 
         produto.descricao_final = (
@@ -351,3 +449,9 @@ class ProductTable(ctk.CTkFrame):
             linha,
             values=valores,
         )
+
+        if (
+            palavras_realmente_adicionadas
+            and self.ao_alterar_regras is not None
+        ):
+            self.ao_alterar_regras()

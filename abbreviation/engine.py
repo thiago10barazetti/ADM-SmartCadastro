@@ -1,93 +1,28 @@
 import re
 
 
-PALAVRAS_REMOVIDAS = {
-    "INVERNO",
-    "INV",
-    "STRETCH",
-    "MODAL",
-}
-
-
-SUBSTITUICOES_DE_EXPRESSOES = {
-    "RAYON TWILL": "RAYON",
-}
-
-
-ABREVIACOES = {
-    "FEMININA": "FEM",
-    "FEMININO": "FEM",
-    "MASCULINA": "MASC",
-    "MASCULINO": "MASC",
-}
-
-
-TAMANHOS_VALIDOS = {
-    "34",
-    "36",
-    "38",
-    "40",
-    "42",
-    "44",
-    "46",
-    "48",
-    "50",
-    "52",
-    "54",
-    "PP",
-    "P",
-    "M",
-    "G",
-    "GG",
-    "XG",
-    "G1",
-    "G2",
-    "G3",
-}
-
-
-CORES_BASE = {
-    "PRETO",
-    "BRANCO",
-    "AZUL",
-    "VERDE",
-    "VERMELHO",
-    "AMARELO",
-    "ROSA",
-    "LILAS",
-    "LILÁS",
-    "ROXO",
-    "BEGE",
-    "MARROM",
-    "CINZA",
-    "LARANJA",
-    "VINHO",
-    "NUDE",
-    "DOURADO",
-    "PRATA",
-}
-
-
 def remover_variantes_de_cor(
     palavras: list[str],
+    tamanhos_validos: set[str],
+    cores_base: set[str],
 ) -> list[str]:
     """
-    Mantém apenas a cor base e remove a variante posterior.
+    Mantém a cor principal e remove suas variantes.
 
     Exemplos:
-        G PRETO REATIVO -> G PRETO
-        M VERDE FLORENA -> M VERDE
-        PP BRANCO OFF WHITE -> PP BRANCO
+        PRETO REATIVO -> PRETO
+        VERDE FLORENA -> VERDE
+        BEGE ALHAMBRA -> BEGE
     """
 
     ultimo_tamanho = -1
 
     for indice, palavra in enumerate(palavras):
-        if palavra in TAMANHOS_VALIDOS:
+        if palavra in tamanhos_validos:
             ultimo_tamanho = indice
 
     for indice, palavra in enumerate(palavras):
-        if palavra not in CORES_BASE:
+        if palavra not in cores_base:
             continue
 
         cor_depois_do_tamanho = (
@@ -105,12 +40,10 @@ def remover_variantes_de_cor(
         ):
             continue
 
-        # Preserva algum tamanho que eventualmente apareça
-        # depois da cor.
         tamanhos_posteriores = [
             item
             for item in palavras[indice + 1:]
-            if item in TAMANHOS_VALIDOS
+            if item in tamanhos_validos
         ]
 
         return (
@@ -123,18 +56,42 @@ def remover_variantes_de_cor(
 
 def abreviar_descricao(
     descricao_original: str,
+    configuracoes: dict,
 ) -> str:
-    """Cria uma descrição curta e padronizada."""
+    """Cria uma descrição curta usando as configurações."""
+
+    palavras_removidas = set(
+        configuracoes["palavras_removidas"]
+    )
+
+    substituicoes = configuracoes[
+        "substituicoes_expressoes"
+    ]
+
+    abreviacoes = configuracoes["abreviacoes"]
+
+    tamanhos_validos = set(
+        configuracoes["tamanhos_validos"]
+    )
+
+    cores_base = set(
+        configuracoes["cores_base"]
+    )
 
     descricao = descricao_original.upper().strip()
     descricao = re.sub(r"\s+", " ", descricao)
 
-    for expressao, substituicao in (
-        SUBSTITUICOES_DE_EXPRESSOES.items()
-    ):
+    # Expressões maiores são processadas primeiro.
+    expressoes_ordenadas = sorted(
+        substituicoes.items(),
+        key=lambda item: len(item[0]),
+        reverse=True,
+    )
+
+    for expressao, substituicao in expressoes_ordenadas:
         descricao = re.sub(
-            rf"\b{re.escape(expressao)}\b",
-            substituicao,
+            rf"\b{re.escape(expressao.upper())}\b",
+            substituicao.upper(),
             descricao,
         )
 
@@ -148,10 +105,10 @@ def abreviar_descricao(
         if not palavra_limpa:
             continue
 
-        if palavra_limpa in PALAVRAS_REMOVIDAS:
+        if palavra_limpa in palavras_removidas:
             continue
 
-        if palavra_limpa in TAMANHOS_VALIDOS:
+        if palavra_limpa in tamanhos_validos:
             palavras_finais.append(
                 palavra_limpa
             )
@@ -160,7 +117,7 @@ def abreviar_descricao(
         if palavra_limpa.isdigit():
             continue
 
-        palavra_final = ABREVIACOES.get(
+        palavra_final = abreviacoes.get(
             palavra_limpa,
             palavra_limpa,
         )
@@ -170,7 +127,9 @@ def abreviar_descricao(
         )
 
     palavras_finais = remover_variantes_de_cor(
-        palavras_finais
+        palavras=palavras_finais,
+        tamanhos_validos=tamanhos_validos,
+        cores_base=cores_base,
     )
 
     return " ".join(palavras_finais)

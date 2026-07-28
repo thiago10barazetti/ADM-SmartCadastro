@@ -4,6 +4,7 @@ from tkinter import filedialog, messagebox
 import customtkinter as ctk
 
 from interface.product_table import ProductTable
+from interface.settings_window import SettingsWindow
 from interface.styles import (
     COR_AZUL,
     COR_AZUL_HOVER,
@@ -42,6 +43,8 @@ class MainWindow(ctk.CTk):
 
         self.arquivo_xml: Path | None = None
         self.produtos = []
+
+        self.janela_configuracoes: SettingsWindow | None = None
 
         self.grid_columnconfigure(0, weight=1)
         self.grid_rowconfigure(1, weight=1)
@@ -199,7 +202,12 @@ class MainWindow(ctk.CTk):
             sticky="ew",
         )
 
-        self.tabela_produtos = ProductTable(conteudo)
+        self.tabela_produtos = ProductTable(
+            conteudo,
+            ao_alterar_regras=(
+                self.atualizar_produtos_apos_configuracao
+            ),
+        )
         self.tabela_produtos.grid(
             row=3,
             column=0,
@@ -234,6 +242,7 @@ class MainWindow(ctk.CTk):
                 family=FONTE_PRINCIPAL,
                 size=TAMANHO_BOTAO,
             ),
+            command=self.abrir_configuracoes,
         )
         botao_configuracoes.grid(
             row=0,
@@ -308,6 +317,7 @@ class MainWindow(ctk.CTk):
             messagebox.showerror(
                 "Erro ao ler XML",
                 str(erro),
+                parent=self,
             )
             return
 
@@ -328,4 +338,35 @@ class MainWindow(ctk.CTk):
 
         self.botao_iniciar.configure(
             state="normal"
+        )
+
+    def abrir_configuracoes(self) -> None:
+        """Abre a janela de configurações."""
+
+        if (
+            self.janela_configuracoes is not None
+            and self.janela_configuracoes.winfo_exists()
+        ):
+            self.janela_configuracoes.focus()
+            return
+
+        self.janela_configuracoes = SettingsWindow(
+            master=self,
+            ao_salvar=(
+                self.atualizar_produtos_apos_configuracao
+            ),
+        )
+
+    def atualizar_produtos_apos_configuracao(self) -> None:
+        """Reprocessa os produtos após alterar regras."""
+
+        if not self.produtos:
+            return
+
+        preparar_produtos(
+            self.produtos
+        )
+
+        self.tabela_produtos.carregar_produtos(
+            self.produtos
         )
