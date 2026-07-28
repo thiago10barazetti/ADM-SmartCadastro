@@ -1,5 +1,5 @@
 from decimal import Decimal
-from tkinter import ttk
+from tkinter import messagebox, simpledialog, ttk
 
 import customtkinter as ctk
 
@@ -21,7 +21,7 @@ def formatar_decimal(
 
 
 class ProductTable(ctk.CTkFrame):
-    """Tabela que exibe os produtos encontrados no XML."""
+    """Tabela que exibe e permite revisar os produtos."""
 
     def __init__(self, master) -> None:
         super().__init__(
@@ -31,6 +31,8 @@ class ProductTable(ctk.CTkFrame):
             border_color="#D1D5DB",
             corner_radius=3,
         )
+
+        self.produtos: list[Produto] = []
 
         self.grid_columnconfigure(0, weight=1)
         self.grid_rowconfigure(0, weight=1)
@@ -93,8 +95,8 @@ class ProductTable(ctk.CTkFrame):
         )
         self.tabela.column(
             "descricao_final",
-            width=270,
-            minwidth=200,
+            width=300,
+            minwidth=220,
             anchor="w",
         )
         self.tabela.column(
@@ -158,6 +160,11 @@ class ProductTable(ctk.CTkFrame):
             padx=(1, 0),
         )
 
+        self.tabela.bind(
+            "<Double-1>",
+            self.editar_descricao,
+        )
+
     def configurar_estilo(self) -> None:
         estilo = ttk.Style(self)
 
@@ -199,6 +206,8 @@ class ProductTable(ctk.CTkFrame):
     def limpar(self) -> None:
         """Remove todos os produtos da tabela."""
 
+        self.produtos = []
+
         for item in self.tabela.get_children():
             self.tabela.delete(item)
 
@@ -209,8 +218,9 @@ class ProductTable(ctk.CTkFrame):
         """Exibe os produtos na tabela."""
 
         self.limpar()
+        self.produtos = produtos
 
-        for produto in produtos:
+        for indice, produto in enumerate(produtos):
             quantidade = formatar_decimal(
                 produto.quantidade
             )
@@ -223,6 +233,7 @@ class ProductTable(ctk.CTkFrame):
             self.tabela.insert(
                 "",
                 "end",
+                iid=str(indice),
                 values=(
                     produto.referencia,
                     produto.descricao_original,
@@ -232,3 +243,70 @@ class ProductTable(ctk.CTkFrame):
                     produto.codigo_custo,
                 ),
             )
+
+    def editar_descricao(self, evento) -> None:
+        """Permite editar a descrição final com duplo clique."""
+
+        linha = self.tabela.identify_row(evento.y)
+        coluna = self.tabela.identify_column(evento.x)
+
+        if not linha:
+            return
+
+        # A descrição final é a terceira coluna.
+        if coluna != "#3":
+            return
+
+        indice = int(linha)
+        produto = self.produtos[indice]
+
+        descricao_sem_codigo = produto.descricao_final
+
+        if descricao_sem_codigo.endswith(produto.codigo_custo):
+            descricao_sem_codigo = descricao_sem_codigo[
+                :-len(produto.codigo_custo)
+            ].strip()
+
+        nova_descricao = simpledialog.askstring(
+            title="Editar descrição",
+            prompt=(
+                "Digite a descrição do produto.\n"
+                "O código do custo será adicionado automaticamente:"
+            ),
+            initialvalue=descricao_sem_codigo,
+            parent=self,
+        )
+
+        if nova_descricao is None:
+            return
+
+        nova_descricao = " ".join(
+            nova_descricao.upper().split()
+        )
+
+        if not nova_descricao:
+            messagebox.showwarning(
+                "Descrição inválida",
+                "A descrição não pode ficar vazia.",
+                parent=self,
+            )
+            return
+
+        produto.descricao_final = (
+            f"{nova_descricao} "
+            f"{produto.codigo_custo}"
+        )
+
+        valores = list(
+            self.tabela.item(
+                linha,
+                "values",
+            )
+        )
+
+        valores[2] = produto.descricao_final
+
+        self.tabela.item(
+            linha,
+            values=valores,
+        )
