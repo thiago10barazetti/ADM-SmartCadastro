@@ -15,4 +15,6 @@ class Produto:
     quantidade: Decimal
     valor_unitario: Decimal
     valor_total: Decimal
-    csosn: str
+
+    descricao_final: str = ""
+    codigo_custo: str = ""

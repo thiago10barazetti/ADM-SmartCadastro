@@ -1,6 +1,7 @@
 from pathlib import Path
 from tkinter import filedialog, messagebox
 from interface.product_table import ProductTable
+from services.preparacao_produtos import preparar_produtos
 
 import customtkinter as ctk
 
@@ -213,6 +214,7 @@ class MainWindow(ctk.CTk):
 
         try:
             self.produtos = ler_produtos_xml(self.arquivo_xml)
+            preparar_produtos(self.produtos)
 
         except (ValueError, FileNotFoundError, OSError) as erro:
             self.produtos = []
@@ -271,4 +273,3 @@ class MainWindow(ctk.CTk):
                 f"Valor total: "
                 f"R$ {produto.valor_total:.2f}"
             )
-            print(f"CSOSN: {produto.csosn}")

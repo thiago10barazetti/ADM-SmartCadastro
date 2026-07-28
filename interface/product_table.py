@@ -6,7 +6,10 @@ import customtkinter as ctk
 from models.produto import Produto
 
 
-def formatar_decimal(valor: Decimal, casas: int | None = None) -> str:
+def formatar_decimal(
+    valor: Decimal,
+    casas: int | None = None,
+) -> str:
     """Formata valores decimais usando vírgula."""
 
     if casas is not None:
@@ -18,7 +21,7 @@ def formatar_decimal(valor: Decimal, casas: int | None = None) -> str:
 
 
 class ProductTable(ctk.CTkFrame):
-    """Tabela utilizada para exibir os produtos do XML."""
+    """Tabela que exibe os produtos encontrados no XML."""
 
     def __init__(self, master) -> None:
         super().__init__(
@@ -36,10 +39,11 @@ class ProductTable(ctk.CTkFrame):
 
         colunas = (
             "referencia",
-            "descricao",
+            "descricao_original",
+            "descricao_final",
             "quantidade",
             "valor_unitario",
-            "csosn",
+            "codigo_custo",
         )
 
         self.tabela = ttk.Treeview(
@@ -54,8 +58,12 @@ class ProductTable(ctk.CTkFrame):
             text="Referência",
         )
         self.tabela.heading(
-            "descricao",
+            "descricao_original",
             text="Descrição original",
+        )
+        self.tabela.heading(
+            "descricao_final",
+            text="Descrição final",
         )
         self.tabela.heading(
             "quantidade",
@@ -66,39 +74,45 @@ class ProductTable(ctk.CTkFrame):
             text="Valor unitário",
         )
         self.tabela.heading(
-            "csosn",
-            text="CSOSN",
+            "codigo_custo",
+            text="Código",
         )
 
         self.tabela.column(
             "referencia",
             width=110,
-            minwidth=90,
+            minwidth=100,
             anchor="center",
             stretch=False,
         )
         self.tabela.column(
-            "descricao",
-            width=450,
-            minwidth=250,
+            "descricao_original",
+            width=270,
+            minwidth=200,
+            anchor="w",
+        )
+        self.tabela.column(
+            "descricao_final",
+            width=270,
+            minwidth=200,
             anchor="w",
         )
         self.tabela.column(
             "quantidade",
-            width=110,
-            minwidth=90,
+            width=90,
+            minwidth=80,
             anchor="center",
             stretch=False,
         )
         self.tabela.column(
             "valor_unitario",
-            width=130,
+            width=120,
             minwidth=110,
             anchor="e",
             stretch=False,
         )
         self.tabela.column(
-            "csosn",
+            "codigo_custo",
             width=90,
             minwidth=80,
             anchor="center",
@@ -188,13 +202,19 @@ class ProductTable(ctk.CTkFrame):
         for item in self.tabela.get_children():
             self.tabela.delete(item)
 
-    def carregar_produtos(self, produtos: list[Produto]) -> None:
-        """Mostra na tabela os produtos encontrados no XML."""
+    def carregar_produtos(
+        self,
+        produtos: list[Produto],
+    ) -> None:
+        """Exibe os produtos na tabela."""
 
         self.limpar()
 
         for produto in produtos:
-            quantidade = formatar_decimal(produto.quantidade)
+            quantidade = formatar_decimal(
+                produto.quantidade
+            )
+
             valor_unitario = formatar_decimal(
                 produto.valor_unitario,
                 casas=2,
@@ -206,8 +226,9 @@ class ProductTable(ctk.CTkFrame):
                 values=(
                     produto.referencia,
                     produto.descricao_original,
+                    produto.descricao_final,
                     quantidade,
                     f"R$ {valor_unitario}",
-                    produto.csosn or "-",
+                    produto.codigo_custo,
                 ),
             )
