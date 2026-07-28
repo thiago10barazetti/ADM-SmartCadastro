@@ -1,10 +1,11 @@
 from pathlib import Path
-from tkinter import filedialog
+from tkinter import filedialog, messagebox
 
 import customtkinter as ctk
 
+from xml_reader.nfe_reader import ler_produtos_xml
 
-# Aparência geral do sistema
+
 ctk.set_appearance_mode("light")
 ctk.set_default_color_theme("blue")
 
@@ -21,6 +22,7 @@ class MainWindow(ctk.CTk):
         self.configure(fg_color="#FFFFFF")
 
         self.arquivo_xml: Path | None = None
+        self.produtos = []
 
         self.grid_columnconfigure(0, weight=1)
         self.grid_rowconfigure(1, weight=1)
@@ -85,7 +87,12 @@ class MainWindow(ctk.CTk):
             fg_color="#FFFFFF",
             corner_radius=0,
         )
-        area_selecao.grid(row=0, column=0, sticky="ew", pady=(0, 20))
+        area_selecao.grid(
+            row=0,
+            column=0,
+            sticky="ew",
+            pady=(0, 20),
+        )
         area_selecao.grid_columnconfigure(1, weight=1)
 
         botao_xml = ctk.CTkButton(
@@ -100,7 +107,11 @@ class MainWindow(ctk.CTk):
             font=ctk.CTkFont(size=14, weight="bold"),
             command=self.selecionar_xml,
         )
-        botao_xml.grid(row=0, column=0, padx=(0, 15))
+        botao_xml.grid(
+            row=0,
+            column=0,
+            padx=(0, 15),
+        )
 
         self.label_arquivo = ctk.CTkLabel(
             area_selecao,
@@ -109,7 +120,11 @@ class MainWindow(ctk.CTk):
             text_color="#6B7280",
             font=ctk.CTkFont(size=13),
         )
-        self.label_arquivo.grid(row=0, column=1, sticky="ew")
+        self.label_arquivo.grid(
+            row=0,
+            column=1,
+            sticky="ew",
+        )
 
         self.label_quantidade = ctk.CTkLabel(
             conteudo,
@@ -138,20 +153,29 @@ class MainWindow(ctk.CTk):
             sticky="nsew",
         )
 
-        mensagem = ctk.CTkLabel(
+        self.mensagem_produtos = ctk.CTkLabel(
             area_produtos,
             text="Selecione um XML para visualizar os produtos.",
             text_color="#6B7280",
             font=ctk.CTkFont(size=14),
         )
-        mensagem.place(relx=0.5, rely=0.5, anchor="center")
+        self.mensagem_produtos.place(
+            relx=0.5,
+            rely=0.5,
+            anchor="center",
+        )
 
         area_botoes = ctk.CTkFrame(
             conteudo,
             fg_color="#FFFFFF",
             corner_radius=0,
         )
-        area_botoes.grid(row=4, column=0, pady=(20, 0), sticky="ew")
+        area_botoes.grid(
+            row=4,
+            column=0,
+            pady=(20, 0),
+            sticky="ew",
+        )
         area_botoes.grid_columnconfigure(1, weight=1)
 
         botao_configuracoes = ctk.CTkButton(
@@ -166,7 +190,11 @@ class MainWindow(ctk.CTk):
             border_color="#9CA3AF",
             text_color="#374151",
         )
-        botao_configuracoes.grid(row=0, column=0, sticky="w")
+        botao_configuracoes.grid(
+            row=0,
+            column=0,
+            sticky="w",
+        )
 
         self.botao_iniciar = ctk.CTkButton(
             area_botoes,
@@ -180,7 +208,11 @@ class MainWindow(ctk.CTk):
             font=ctk.CTkFont(size=14, weight="bold"),
             state="disabled",
         )
-        self.botao_iniciar.grid(row=0, column=2, sticky="e")
+        self.botao_iniciar.grid(
+            row=0,
+            column=2,
+            sticky="e",
+        )
 
     def selecionar_xml(self) -> None:
         caminho = filedialog.askopenfilename(
@@ -196,7 +228,65 @@ class MainWindow(ctk.CTk):
 
         self.arquivo_xml = Path(caminho)
 
+        try:
+            self.produtos = ler_produtos_xml(self.arquivo_xml)
+
+        except (ValueError, FileNotFoundError, OSError) as erro:
+            self.produtos = []
+
+            self.label_quantidade.configure(
+                text="Produtos encontrados: 0"
+            )
+
+            self.botao_iniciar.configure(
+                state="disabled"
+            )
+
+            messagebox.showerror(
+                "Erro ao ler XML",
+                str(erro),
+            )
+            return
+
+        quantidade = len(self.produtos)
+
         self.label_arquivo.configure(
             text=f"Arquivo: {self.arquivo_xml.name}",
             text_color="#374151",
         )
+
+        self.label_quantidade.configure(
+            text=f"Produtos encontrados: {quantidade}"
+        )
+
+        self.mensagem_produtos.configure(
+            text=f"{quantidade} produtos carregados com sucesso."
+        )
+
+        self.botao_iniciar.configure(
+            state="normal"
+        )
+
+        print("\nPRODUTOS ENCONTRADOS")
+        print("-" * 70)
+
+        for numero, produto in enumerate(
+            self.produtos,
+            start=1,
+        ):
+            print(f"\nProduto {numero}")
+            print(f"Referência: {produto.referencia}")
+            print(f"Descrição: {produto.descricao_original}")
+            print(f"Código de barras: {produto.codigo_barras}")
+            print(f"NCM: {produto.ncm}")
+            print(f"CFOP: {produto.cfop}")
+            print(f"Quantidade: {produto.quantidade}")
+            print(
+                f"Valor unitário: "
+                f"R$ {produto.valor_unitario:.2f}"
+            )
+            print(
+                f"Valor total: "
+                f"R$ {produto.valor_total:.2f}"
+            )
+            print(f"CSOSN: {produto.csosn}")
