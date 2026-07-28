@@ -17,3 +17,5 @@ logs/*.log
 
 # Arquivos temporários
 *.tmp
+
+automation/calibration.json
