@@ -18,6 +18,8 @@ from interface.styles import (
     COR_AZUL_CLARO,
     COR_AZUL_CLARO_HOVER,
     COR_BORDA,
+    COR_ERRO_FUNDO,
+    COR_ERRO_TEXTO,
     COR_FUNDO,
     COR_TEXTO,
     COR_TEXTO_BOTAO,
@@ -57,11 +59,7 @@ def identificar_palavras_removidas(
     descricao_anterior: str,
     descricao_nova: str,
 ) -> list[str]:
-    """
-    Identifica quais palavras desapareceram após a edição.
-
-    A ordem original das palavras é preservada.
-    """
+    """Identifica as palavras removidas durante a edição."""
 
     palavras_anteriores = extrair_palavras(
         descricao_anterior
@@ -93,6 +91,9 @@ class ProductTable(ctk.CTkFrame):
         ao_alterar_regras: (
             Callable[[], None] | None
         ) = None,
+        ao_atualizar_validacao: (
+            Callable[[], None] | None
+        ) = None,
     ) -> None:
         super().__init__(
             master,
@@ -104,6 +105,11 @@ class ProductTable(ctk.CTkFrame):
 
         self.produtos: list[Produto] = []
         self.ao_alterar_regras = ao_alterar_regras
+        self.ao_atualizar_validacao = (
+            ao_atualizar_validacao
+        )
+
+        self.limite_descricao = 35
 
         self.grid_columnconfigure(0, weight=1)
         self.grid_rowconfigure(0, weight=1)
@@ -114,6 +120,7 @@ class ProductTable(ctk.CTkFrame):
             "referencia",
             "descricao_original",
             "descricao_final",
+            "caracteres",
             "quantidade",
             "valor_unitario",
             "codigo_custo",
@@ -130,22 +137,32 @@ class ProductTable(ctk.CTkFrame):
             "referencia",
             text="Referência",
         )
+
         self.tabela.heading(
             "descricao_original",
             text="Descrição original",
         )
+
         self.tabela.heading(
             "descricao_final",
             text="Descrição final",
         )
+
+        self.tabela.heading(
+            "caracteres",
+            text="Caracteres",
+        )
+
         self.tabela.heading(
             "quantidade",
             text="Quantidade",
         )
+
         self.tabela.heading(
             "valor_unitario",
             text="Valor unitário",
         )
+
         self.tabela.heading(
             "codigo_custo",
             text="Código",
@@ -158,18 +175,29 @@ class ProductTable(ctk.CTkFrame):
             anchor="center",
             stretch=False,
         )
+
         self.tabela.column(
             "descricao_original",
-            width=270,
+            width=260,
             minwidth=200,
             anchor="w",
         )
+
         self.tabela.column(
             "descricao_final",
-            width=300,
+            width=290,
             minwidth=220,
             anchor="w",
         )
+
+        self.tabela.column(
+            "caracteres",
+            width=85,
+            minwidth=80,
+            anchor="center",
+            stretch=False,
+        )
+
         self.tabela.column(
             "quantidade",
             width=90,
@@ -177,6 +205,7 @@ class ProductTable(ctk.CTkFrame):
             anchor="center",
             stretch=False,
         )
+
         self.tabela.column(
             "valor_unitario",
             width=120,
@@ -184,6 +213,7 @@ class ProductTable(ctk.CTkFrame):
             anchor="e",
             stretch=False,
         )
+
         self.tabela.column(
             "codigo_custo",
             width=90,
@@ -229,6 +259,12 @@ class ProductTable(ctk.CTkFrame):
             column=0,
             sticky="ew",
             padx=(1, 0),
+        )
+
+        self.tabela.tag_configure(
+            "invalido",
+            background=COR_ERRO_FUNDO,
+            foreground=COR_ERRO_TEXTO,
         )
 
         self.tabela.bind(
@@ -286,6 +322,21 @@ class ProductTable(ctk.CTkFrame):
             ],
         )
 
+    def carregar_limite(self) -> None:
+        """Carrega o limite salvo nas configurações."""
+
+        configuracoes = carregar_configuracoes()
+
+        try:
+            self.limite_descricao = int(
+                configuracoes.get(
+                    "limite_descricao",
+                    35,
+                )
+            )
+        except (TypeError, ValueError):
+            self.limite_descricao = 35
+
     def limpar(self) -> None:
         """Remove todos os produtos da tabela."""
 
@@ -300,32 +351,122 @@ class ProductTable(ctk.CTkFrame):
     ) -> None:
         """Exibe os produtos encontrados no XML."""
 
+        self.carregar_limite()
         self.limpar()
         self.produtos = produtos
 
         for indice, produto in enumerate(produtos):
-            quantidade = formatar_decimal(
-                produto.quantidade
+            self.inserir_produto(
+                indice=indice,
+                produto=produto,
             )
 
-            valor_unitario = formatar_decimal(
-                produto.valor_unitario,
-                casas=2,
-            )
+        self.notificar_validacao()
 
-            self.tabela.insert(
-                "",
-                "end",
-                iid=str(indice),
-                values=(
-                    produto.referencia,
-                    produto.descricao_original,
-                    produto.descricao_final,
-                    quantidade,
-                    f"R$ {valor_unitario}",
-                    produto.codigo_custo,
+    def inserir_produto(
+        self,
+        indice: int,
+        produto: Produto,
+    ) -> None:
+        """Insere um produto na tabela."""
+
+        quantidade = formatar_decimal(
+            produto.quantidade
+        )
+
+        valor_unitario = formatar_decimal(
+            produto.valor_unitario,
+            casas=2,
+        )
+
+        quantidade_caracteres = len(
+            produto.descricao_final
+        )
+
+        tags = ()
+
+        if quantidade_caracteres > self.limite_descricao:
+            tags = ("invalido",)
+
+        self.tabela.insert(
+            "",
+            "end",
+            iid=str(indice),
+            values=(
+                produto.referencia,
+                produto.descricao_original,
+                produto.descricao_final,
+                (
+                    f"{quantidade_caracteres}/"
+                    f"{self.limite_descricao}"
                 ),
+                quantidade,
+                f"R$ {valor_unitario}",
+                produto.codigo_custo,
+            ),
+            tags=tags,
+        )
+
+    def atualizar_linha(
+        self,
+        linha: str,
+        produto: Produto,
+    ) -> None:
+        """Atualiza uma linha após editar a descrição."""
+
+        quantidade_caracteres = len(
+            produto.descricao_final
+        )
+
+        valores = list(
+            self.tabela.item(
+                linha,
+                "values",
             )
+        )
+
+        valores[2] = produto.descricao_final
+        valores[3] = (
+            f"{quantidade_caracteres}/"
+            f"{self.limite_descricao}"
+        )
+
+        tags = ()
+
+        if quantidade_caracteres > self.limite_descricao:
+            tags = ("invalido",)
+
+        self.tabela.item(
+            linha,
+            values=valores,
+            tags=tags,
+        )
+
+    def contar_descricoes_invalidas(self) -> int:
+        """Conta as descrições acima do limite."""
+
+        return sum(
+            1
+            for produto in self.produtos
+            if len(produto.descricao_final)
+            > self.limite_descricao
+        )
+
+    def tem_descricoes_invalidas(self) -> bool:
+        """Informa se existe alguma descrição acima do limite."""
+
+        return self.contar_descricoes_invalidas() > 0
+
+    def obter_limite_descricao(self) -> int:
+        """Retorna o limite atual."""
+
+        return self.limite_descricao
+
+    def notificar_validacao(self) -> None:
+        """Avisa a janela principal para atualizar o botão."""
+
+        if self.ao_atualizar_validacao is not None:
+            self.ao_atualizar_validacao()
 
     def editar_descricao(self, evento) -> None:
         """Permite editar a descrição final com duplo clique."""
@@ -436,22 +577,16 @@ class ProductTable(ctk.CTkFrame):
             f"{produto.codigo_custo}"
         )
 
-        valores = list(
-            self.tabela.item(
-                linha,
-                "values",
-            )
-        )
-
-        valores[2] = produto.descricao_final
-
-        self.tabela.item(
-            linha,
-            values=valores,
-        )
-
         if (
             palavras_realmente_adicionadas
             and self.ao_alterar_regras is not None
         ):
             self.ao_alterar_regras()
+            return
+
+        self.atualizar_linha(
+            linha=linha,
+            produto=produto,
+        )
+
+        self.notificar_validacao()

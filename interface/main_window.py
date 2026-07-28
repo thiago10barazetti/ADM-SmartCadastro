@@ -10,6 +10,7 @@ from interface.styles import (
     COR_AZUL_HOVER,
     COR_BORDA,
     COR_BORDA_ESCURA,
+    COR_ERRO_TEXTO,
     COR_FUNDO,
     COR_FUNDO_SECUNDARIO,
     COR_TEXTO,
@@ -44,7 +45,9 @@ class MainWindow(ctk.CTk):
         self.arquivo_xml: Path | None = None
         self.produtos = []
 
-        self.janela_configuracoes: SettingsWindow | None = None
+        self.janela_configuracoes: (
+            SettingsWindow | None
+        ) = None
 
         self.grid_columnconfigure(0, weight=1)
         self.grid_rowconfigure(1, weight=1)
@@ -53,7 +56,7 @@ class MainWindow(ctk.CTk):
         self.criar_conteudo()
 
     def criar_cabecalho(self) -> None:
-        """Cria o cabeçalho principal da aplicação."""
+        """Cria o cabeçalho principal."""
 
         cabecalho = ctk.CTkFrame(
             self,
@@ -115,7 +118,7 @@ class MainWindow(ctk.CTk):
         )
 
     def criar_conteudo(self) -> None:
-        """Cria o conteúdo principal da aplicação."""
+        """Cria o conteúdo principal."""
 
         conteudo = ctk.CTkFrame(
             self,
@@ -207,6 +210,9 @@ class MainWindow(ctk.CTk):
             ao_alterar_regras=(
                 self.atualizar_produtos_apos_configuracao
             ),
+            ao_atualizar_validacao=(
+                self.atualizar_estado_botao
+            ),
         )
         self.tabela_produtos.grid(
             row=3,
@@ -273,7 +279,7 @@ class MainWindow(ctk.CTk):
         )
 
     def selecionar_xml(self) -> None:
-        """Seleciona e processa o XML da nota fiscal."""
+        """Seleciona e processa o XML."""
 
         caminho = filedialog.askopenfilename(
             title="Selecionar XML da nota fiscal",
@@ -297,12 +303,17 @@ class MainWindow(ctk.CTk):
                 self.produtos
             )
 
-        except (ValueError, FileNotFoundError, OSError) as erro:
+        except (
+            ValueError,
+            FileNotFoundError,
+            OSError,
+        ) as erro:
             self.produtos = []
             self.tabela_produtos.limpar()
 
             self.label_quantidade.configure(
-                text="Produtos encontrados: 0"
+                text="Produtos encontrados: 0",
+                text_color=COR_TEXTO,
             )
 
             self.label_arquivo.configure(
@@ -329,15 +340,12 @@ class MainWindow(ctk.CTk):
         )
 
         self.label_quantidade.configure(
-            text=f"Produtos encontrados: {quantidade}"
+            text=f"Produtos encontrados: {quantidade}",
+            text_color=COR_TEXTO,
         )
 
         self.tabela_produtos.carregar_produtos(
             self.produtos
-        )
-
-        self.botao_iniciar.configure(
-            state="normal"
         )
 
     def abrir_configuracoes(self) -> None:
@@ -357,7 +365,9 @@ class MainWindow(ctk.CTk):
             ),
         )
 
-    def atualizar_produtos_apos_configuracao(self) -> None:
+    def atualizar_produtos_apos_configuracao(
+        self,
+    ) -> None:
         """Reprocessa os produtos após alterar regras."""
 
         if not self.produtos:
@@ -369,4 +379,56 @@ class MainWindow(ctk.CTk):
 
         self.tabela_produtos.carregar_produtos(
             self.produtos
+        )
+
+    def atualizar_estado_botao(self) -> None:
+        """Habilita ou bloqueia o início do cadastro."""
+
+        quantidade = len(self.produtos)
+
+        if quantidade == 0:
+            self.label_quantidade.configure(
+                text="Produtos encontrados: 0",
+                text_color=COR_TEXTO,
+            )
+
+            self.botao_iniciar.configure(
+                state="disabled"
+            )
+            return
+
+        invalidas = (
+            self.tabela_produtos
+            .contar_descricoes_invalidas()
+        )
+
+        limite = (
+            self.tabela_produtos
+            .obter_limite_descricao()
+        )
+
+        if invalidas > 0:
+            self.label_quantidade.configure(
+                text=(
+                    f"Produtos encontrados: {quantidade} | "
+                    f"Acima de {limite} caracteres: {invalidas}"
+                ),
+                text_color=COR_ERRO_TEXTO,
+            )
+
+            self.botao_iniciar.configure(
+                state="disabled"
+            )
+            return
+
+        self.label_quantidade.configure(
+            text=(
+                f"Produtos encontrados: {quantidade} | "
+                "Descrições válidas"
+            ),
+            text_color=COR_TEXTO,
+        )
+
+        self.botao_iniciar.configure(
+            state="normal"
         )

@@ -63,4 +63,6 @@ CONFIGURACOES_PADRAO = {
         "DOURADO",
         "PRATA",
     ],
+
+    "limite_descricao": 35,
 }

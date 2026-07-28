@@ -54,6 +54,8 @@ class SettingsWindow(ctk.CTkToplevel):
         self.carregar_campos()
 
     def criar_cabecalho(self) -> None:
+        """Cria o cabeçalho da janela."""
+
         cabecalho = ctk.CTkFrame(
             self,
             fg_color=COR_FUNDO,
@@ -93,9 +95,14 @@ class SettingsWindow(ctk.CTkToplevel):
                 size=TAMANHO_SUBTITULO,
             ),
         )
-        subtitulo.pack(anchor="w", pady=(4, 0))
+        subtitulo.pack(
+            anchor="w",
+            pady=(4, 0),
+        )
 
     def criar_abas(self) -> None:
+        """Cria as abas de configurações."""
+
         self.abas = ctk.CTkTabview(
             self,
             fg_color=COR_FUNDO_SECUNDARIO,
@@ -123,6 +130,7 @@ class SettingsWindow(ctk.CTkToplevel):
             "Abreviações",
             "Tamanhos",
             "Cores",
+            "Limite",
         )
 
         for nome in nomes_abas:
@@ -131,8 +139,8 @@ class SettingsWindow(ctk.CTkToplevel):
         self.campo_palavras = self.criar_campo_texto(
             nome_aba="Palavras removidas",
             explicacao=(
-                "Digite uma palavra por linha. Essas palavras serão "
-                "retiradas da descrição."
+                "Digite uma palavra por linha. Essas palavras "
+                "serão retiradas da descrição."
             ),
         )
 
@@ -155,26 +163,32 @@ class SettingsWindow(ctk.CTkToplevel):
         self.campo_tamanhos = self.criar_campo_texto(
             nome_aba="Tamanhos",
             explicacao=(
-                "Digite um tamanho por linha. Esses valores serão "
-                "mantidos nas descrições."
+                "Digite um tamanho por linha. Esses valores "
+                "serão mantidos nas descrições."
             ),
         )
 
         self.campo_cores = self.criar_campo_texto(
             nome_aba="Cores",
             explicacao=(
-                "Digite uma cor principal por linha. O sistema manterá "
-                "a cor e removerá sua variante posterior."
+                "Digite uma cor principal por linha. O sistema "
+                "manterá a cor e removerá sua variante posterior."
             ),
         )
+
+        self.campo_limite = self.criar_campo_limite()
 
     def criar_campo_texto(
         self,
         nome_aba: str,
         explicacao: str,
     ) -> ctk.CTkTextbox:
+        """Cria um campo de texto dentro de uma aba."""
+
         aba = self.abas.tab(nome_aba)
-        aba.configure(fg_color=COR_FUNDO_SECUNDARIO)
+        aba.configure(
+            fg_color=COR_FUNDO_SECUNDARIO
+        )
 
         aba.grid_columnconfigure(0, weight=1)
         aba.grid_rowconfigure(1, weight=1)
@@ -220,7 +234,104 @@ class SettingsWindow(ctk.CTkToplevel):
 
         return campo
 
+    def criar_campo_limite(self) -> ctk.CTkEntry:
+        """Cria o campo do limite da descrição."""
+
+        aba = self.abas.tab("Limite")
+        aba.configure(
+            fg_color=COR_FUNDO_SECUNDARIO
+        )
+
+        aba.grid_columnconfigure(0, weight=1)
+
+        titulo = ctk.CTkLabel(
+            aba,
+            text="Limite máximo da descrição",
+            anchor="w",
+            text_color=COR_TEXTO,
+            font=ctk.CTkFont(
+                family=FONTE_PRINCIPAL,
+                size=16,
+                weight="bold",
+            ),
+        )
+        titulo.grid(
+            row=0,
+            column=0,
+            padx=20,
+            pady=(25, 5),
+            sticky="ew",
+        )
+
+        explicacao = ctk.CTkLabel(
+            aba,
+            text=(
+                "O limite conta todos os caracteres da descrição, "
+                "incluindo espaços, parênteses e o código secreto.\n\n"
+                "Descrições acima do limite serão destacadas em "
+                "vermelho e impedirão o início do cadastro."
+            ),
+            justify="left",
+            anchor="w",
+            text_color=COR_TEXTO_SECUNDARIO,
+            font=ctk.CTkFont(
+                family=FONTE_PRINCIPAL,
+                size=TAMANHO_TEXTO,
+            ),
+        )
+        explicacao.grid(
+            row=1,
+            column=0,
+            padx=20,
+            pady=(0, 20),
+            sticky="ew",
+        )
+
+        campo = ctk.CTkEntry(
+            aba,
+            width=180,
+            height=40,
+            fg_color=COR_FUNDO,
+            text_color=COR_TEXTO,
+            border_color=COR_BORDA,
+            border_width=1,
+            corner_radius=4,
+            placeholder_text="35",
+            font=ctk.CTkFont(
+                family=FONTE_PRINCIPAL,
+                size=15,
+            ),
+        )
+        campo.grid(
+            row=2,
+            column=0,
+            padx=20,
+            sticky="w",
+        )
+
+        observacao = ctk.CTkLabel(
+            aba,
+            text="Valor permitido: de 10 até 100 caracteres.",
+            anchor="w",
+            text_color=COR_TEXTO_SECUNDARIO,
+            font=ctk.CTkFont(
+                family=FONTE_PRINCIPAL,
+                size=12,
+            ),
+        )
+        observacao.grid(
+            row=3,
+            column=0,
+            padx=20,
+            pady=(8, 0),
+            sticky="w",
+        )
+
+        return campo
+
     def criar_botoes(self) -> None:
+        """Cria os botões da janela."""
+
         area_botoes = ctk.CTkFrame(
             self,
             fg_color=COR_FUNDO,
@@ -280,6 +391,8 @@ class SettingsWindow(ctk.CTkToplevel):
         )
 
     def carregar_campos(self) -> None:
+        """Carrega as configurações nos campos."""
+
         self.inserir_lista(
             self.campo_palavras,
             self.configuracoes["palavras_removidas"],
@@ -287,7 +400,9 @@ class SettingsWindow(ctk.CTkToplevel):
 
         self.inserir_mapeamento(
             self.campo_substituicoes,
-            self.configuracoes["substituicoes_expressoes"],
+            self.configuracoes[
+                "substituicoes_expressoes"
+            ],
         )
 
         self.inserir_mapeamento(
@@ -305,13 +420,27 @@ class SettingsWindow(ctk.CTkToplevel):
             self.configuracoes["cores_base"],
         )
 
+        self.campo_limite.delete(0, "end")
+        self.campo_limite.insert(
+            0,
+            str(
+                self.configuracoes.get(
+                    "limite_descricao",
+                    35,
+                )
+            ),
+        )
+
     @staticmethod
     def inserir_lista(
         campo: ctk.CTkTextbox,
         valores: list[str],
     ) -> None:
         campo.delete("1.0", "end")
-        campo.insert("1.0", "\n".join(valores))
+        campo.insert(
+            "1.0",
+            "\n".join(valores),
+        )
 
     @staticmethod
     def inserir_mapeamento(
@@ -324,18 +453,26 @@ class SettingsWindow(ctk.CTkToplevel):
         ]
 
         campo.delete("1.0", "end")
-        campo.insert("1.0", "\n".join(linhas))
+        campo.insert(
+            "1.0",
+            "\n".join(linhas),
+        )
 
     @staticmethod
     def ler_lista(
         campo: ctk.CTkTextbox,
     ) -> list[str]:
-        texto = campo.get("1.0", "end")
+        texto = campo.get(
+            "1.0",
+            "end",
+        )
 
         valores = []
 
         for linha in texto.splitlines():
-            valor = " ".join(linha.upper().split())
+            valor = " ".join(
+                linha.upper().split()
+            )
 
             if valor and valor not in valores:
                 valores.append(valor)
@@ -347,7 +484,11 @@ class SettingsWindow(ctk.CTkToplevel):
         campo: ctk.CTkTextbox,
         nome_configuracao: str,
     ) -> dict[str, str]:
-        texto = campo.get("1.0", "end")
+        texto = campo.get(
+            "1.0",
+            "end",
+        )
+
         resultado: dict[str, str] = {}
 
         for numero_linha, linha in enumerate(
@@ -361,52 +502,89 @@ class SettingsWindow(ctk.CTkToplevel):
 
             if "=" not in linha:
                 raise ValueError(
-                    f'Erro em "{nome_configuracao}", linha '
-                    f"{numero_linha}: use o símbolo =."
+                    f'Erro em "{nome_configuracao}", '
+                    f"linha {numero_linha}: use o símbolo =."
                 )
 
-            original, substituicao = linha.split("=", 1)
+            original, substituicao = linha.split(
+                "=",
+                1,
+            )
 
             original = " ".join(
                 original.upper().split()
             )
+
             substituicao = " ".join(
                 substituicao.upper().split()
             )
 
             if not original or not substituicao:
                 raise ValueError(
-                    f'Erro em "{nome_configuracao}", linha '
-                    f"{numero_linha}: informe os dois lados da regra."
+                    f'Erro em "{nome_configuracao}", '
+                    f"linha {numero_linha}: informe "
+                    "os dois lados da regra."
                 )
 
             resultado[original] = substituicao
 
         return resultado
 
+    def ler_limite(self) -> int:
+        """Lê e valida o limite da descrição."""
+
+        texto = self.campo_limite.get().strip()
+
+        try:
+            limite = int(texto)
+        except ValueError as erro:
+            raise ValueError(
+                "O limite da descrição deve ser um número inteiro."
+            ) from erro
+
+        if limite < 10 or limite > 100:
+            raise ValueError(
+                "O limite da descrição deve estar entre "
+                "10 e 100 caracteres."
+            )
+
+        return limite
+
     def salvar(self) -> None:
+        """Valida e salva as configurações."""
+
         try:
             configuracoes = {
                 "palavras_removidas": self.ler_lista(
                     self.campo_palavras
                 ),
-                "substituicoes_expressoes": self.ler_mapeamento(
-                    self.campo_substituicoes,
-                    "Substituições",
+
+                "substituicoes_expressoes": (
+                    self.ler_mapeamento(
+                        self.campo_substituicoes,
+                        "Substituições",
+                    )
                 ),
+
                 "abreviacoes": self.ler_mapeamento(
                     self.campo_abreviacoes,
                     "Abreviações",
                 ),
+
                 "tamanhos_validos": self.ler_lista(
                     self.campo_tamanhos
                 ),
+
                 "cores_base": self.ler_lista(
                     self.campo_cores
                 ),
+
+                "limite_descricao": self.ler_limite(),
             }
 
-            salvar_configuracoes(configuracoes)
+            salvar_configuracoes(
+                configuracoes
+            )
 
         except ValueError as erro:
             messagebox.showerror(

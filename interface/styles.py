@@ -1,11 +1,8 @@
 """Configurações visuais do ADM SmartCadastro."""
 
 
-# Fonte principal
 FONTE_PRINCIPAL = "Segoe UI"
 
-
-# Tamanhos das fontes
 TAMANHO_TITULO = 27
 TAMANHO_SUBTITULO = 14
 TAMANHO_TEXTO = 13
@@ -13,8 +10,6 @@ TAMANHO_TEXTO_DESTAQUE = 15
 TAMANHO_BOTAO = 14
 TAMANHO_TABELA = 10
 
-
-# Cores principais
 COR_FUNDO = "#FFFFFF"
 
 COR_AZUL = "#2563EB"
@@ -30,3 +25,6 @@ COR_BORDA = "#D1D5DB"
 COR_BORDA_ESCURA = "#9CA3AF"
 
 COR_FUNDO_SECUNDARIO = "#F3F4F6"
+
+COR_ERRO_FUNDO = "#FEE2E2"
+COR_ERRO_TEXTO = "#991B1B"
