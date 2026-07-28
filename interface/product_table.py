@@ -3,6 +3,17 @@ from tkinter import messagebox, simpledialog, ttk
 
 import customtkinter as ctk
 
+from interface.styles import (
+    COR_AZUL,
+    COR_AZUL_CLARO,
+    COR_AZUL_CLARO_HOVER,
+    COR_BORDA,
+    COR_FUNDO,
+    COR_TEXTO,
+    COR_TEXTO_BOTAO,
+    FONTE_PRINCIPAL,
+    TAMANHO_TABELA,
+)
 from models.produto import Produto
 
 
@@ -15,7 +26,10 @@ def formatar_decimal(
     if casas is not None:
         texto = f"{valor:.{casas}f}"
     else:
-        texto = format(valor.normalize(), "f")
+        texto = format(
+            valor.normalize(),
+            "f",
+        )
 
     return texto.replace(".", ",")
 
@@ -26,9 +40,9 @@ class ProductTable(ctk.CTkFrame):
     def __init__(self, master) -> None:
         super().__init__(
             master,
-            fg_color="#FFFFFF",
+            fg_color=COR_FUNDO,
             border_width=1,
-            border_color="#D1D5DB",
+            border_color=COR_BORDA,
             corner_radius=3,
         )
 
@@ -166,40 +180,49 @@ class ProductTable(ctk.CTkFrame):
         )
 
     def configurar_estilo(self) -> None:
+        """Configura as fontes e cores da tabela."""
+
         estilo = ttk.Style(self)
 
         estilo.configure(
             "Produtos.Treeview",
-            background="#FFFFFF",
-            fieldbackground="#FFFFFF",
-            foreground="#1F2937",
-            rowheight=30,
+            background=COR_FUNDO,
+            fieldbackground=COR_FUNDO,
+            foreground=COR_TEXTO,
+            rowheight=31,
             borderwidth=0,
-            font=("Segoe UI", 10),
+            font=(
+                FONTE_PRINCIPAL,
+                TAMANHO_TABELA,
+            ),
         )
 
         estilo.configure(
             "Produtos.Treeview.Heading",
-            background="#EAF1FF",
-            foreground="#1F2937",
+            background=COR_AZUL_CLARO,
+            foreground=COR_TEXTO,
             relief="flat",
-            font=("Segoe UI", 10, "bold"),
+            font=(
+                FONTE_PRINCIPAL,
+                TAMANHO_TABELA,
+                "bold",
+            ),
         )
 
         estilo.map(
             "Produtos.Treeview",
             background=[
-                ("selected", "#2563EB"),
+                ("selected", COR_AZUL),
             ],
             foreground=[
-                ("selected", "#FFFFFF"),
+                ("selected", COR_TEXTO_BOTAO),
             ],
         )
 
         estilo.map(
             "Produtos.Treeview.Heading",
             background=[
-                ("active", "#DCE8FF"),
+                ("active", COR_AZUL_CLARO_HOVER),
             ],
         )
 
@@ -215,7 +238,7 @@ class ProductTable(ctk.CTkFrame):
         self,
         produtos: list[Produto],
     ) -> None:
-        """Exibe os produtos na tabela."""
+        """Exibe os produtos encontrados no XML."""
 
         self.limpar()
         self.produtos = produtos
@@ -247,8 +270,13 @@ class ProductTable(ctk.CTkFrame):
     def editar_descricao(self, evento) -> None:
         """Permite editar a descrição final com duplo clique."""
 
-        linha = self.tabela.identify_row(evento.y)
-        coluna = self.tabela.identify_column(evento.x)
+        linha = self.tabela.identify_row(
+            evento.y
+        )
+
+        coluna = self.tabela.identify_column(
+            evento.x
+        )
 
         if not linha:
             return
@@ -260,9 +288,13 @@ class ProductTable(ctk.CTkFrame):
         indice = int(linha)
         produto = self.produtos[indice]
 
-        descricao_sem_codigo = produto.descricao_final
+        descricao_sem_codigo = (
+            produto.descricao_final
+        )
 
-        if descricao_sem_codigo.endswith(produto.codigo_custo):
+        if descricao_sem_codigo.endswith(
+            produto.codigo_custo
+        ):
             descricao_sem_codigo = descricao_sem_codigo[
                 :-len(produto.codigo_custo)
             ].strip()
@@ -270,8 +302,9 @@ class ProductTable(ctk.CTkFrame):
         nova_descricao = simpledialog.askstring(
             title="Editar descrição",
             prompt=(
-                "Digite a descrição do produto.\n"
-                "O código do custo será adicionado automaticamente:"
+                "Digite a descrição do produto.\n\n"
+                "O código do custo será adicionado "
+                "automaticamente:"
             ),
             initialvalue=descricao_sem_codigo,
             parent=self,

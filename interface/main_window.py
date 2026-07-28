@@ -1,10 +1,27 @@
 from pathlib import Path
 from tkinter import filedialog, messagebox
-from interface.product_table import ProductTable
-from services.preparacao_produtos import preparar_produtos
 
 import customtkinter as ctk
 
+from interface.product_table import ProductTable
+from interface.styles import (
+    COR_AZUL,
+    COR_AZUL_HOVER,
+    COR_BORDA,
+    COR_BORDA_ESCURA,
+    COR_FUNDO,
+    COR_FUNDO_SECUNDARIO,
+    COR_TEXTO,
+    COR_TEXTO_BOTAO,
+    COR_TEXTO_SECUNDARIO,
+    FONTE_PRINCIPAL,
+    TAMANHO_BOTAO,
+    TAMANHO_SUBTITULO,
+    TAMANHO_TEXTO,
+    TAMANHO_TEXTO_DESTAQUE,
+    TAMANHO_TITULO,
+)
+from services.preparacao_produtos import preparar_produtos
 from xml_reader.nfe_reader import ler_produtos_xml
 
 
@@ -21,7 +38,7 @@ class MainWindow(ctk.CTk):
         self.title("ADM SmartCadastro")
         self.geometry("1000x650")
         self.minsize(850, 550)
-        self.configure(fg_color="#FFFFFF")
+        self.configure(fg_color=COR_FUNDO)
 
         self.arquivo_xml: Path | None = None
         self.produtos = []
@@ -33,44 +50,73 @@ class MainWindow(ctk.CTk):
         self.criar_conteudo()
 
     def criar_cabecalho(self) -> None:
+        """Cria o cabeçalho principal da aplicação."""
+
         cabecalho = ctk.CTkFrame(
             self,
             height=95,
             corner_radius=0,
-            fg_color="#FFFFFF",
+            fg_color=COR_FUNDO,
             border_width=0,
         )
-        cabecalho.grid(row=0, column=0, sticky="ew")
+        cabecalho.grid(
+            row=0,
+            column=0,
+            sticky="ew",
+        )
         cabecalho.grid_columnconfigure(0, weight=1)
 
         titulo = ctk.CTkLabel(
             cabecalho,
             text="ADM SmartCadastro",
-            font=ctk.CTkFont(size=26, weight="bold"),
-            text_color="#1F2937",
+            font=ctk.CTkFont(
+                family=FONTE_PRINCIPAL,
+                size=TAMANHO_TITULO,
+                weight="bold",
+            ),
+            text_color=COR_TEXTO,
         )
-        titulo.grid(row=0, column=0, padx=30, pady=(20, 3))
+        titulo.grid(
+            row=0,
+            column=0,
+            padx=30,
+            pady=(20, 3),
+        )
 
         subtitulo = ctk.CTkLabel(
             cabecalho,
             text="Cadastro inteligente de produtos",
-            font=ctk.CTkFont(size=14),
-            text_color="#6B7280",
+            font=ctk.CTkFont(
+                family=FONTE_PRINCIPAL,
+                size=TAMANHO_SUBTITULO,
+            ),
+            text_color=COR_TEXTO_SECUNDARIO,
         )
-        subtitulo.grid(row=1, column=0, padx=30, pady=(0, 15))
+        subtitulo.grid(
+            row=1,
+            column=0,
+            padx=30,
+            pady=(0, 15),
+        )
 
         separador = ctk.CTkFrame(
             self,
             height=1,
             corner_radius=0,
-            fg_color="#D1D5DB",
+            fg_color=COR_BORDA,
         )
-        separador.grid(row=0, column=0, sticky="sew")
+        separador.grid(
+            row=0,
+            column=0,
+            sticky="sew",
+        )
 
     def criar_conteudo(self) -> None:
+        """Cria o conteúdo principal da aplicação."""
+
         conteudo = ctk.CTkFrame(
             self,
-            fg_color="#FFFFFF",
+            fg_color=COR_FUNDO,
             corner_radius=0,
         )
         conteudo.grid(
@@ -86,7 +132,7 @@ class MainWindow(ctk.CTk):
 
         area_selecao = ctk.CTkFrame(
             conteudo,
-            fg_color="#FFFFFF",
+            fg_color=COR_FUNDO,
             corner_radius=0,
         )
         area_selecao.grid(
@@ -103,10 +149,14 @@ class MainWindow(ctk.CTk):
             width=160,
             height=38,
             corner_radius=4,
-            fg_color="#2563EB",
-            hover_color="#1D4ED8",
-            text_color="#FFFFFF",
-            font=ctk.CTkFont(size=14, weight="bold"),
+            fg_color=COR_AZUL,
+            hover_color=COR_AZUL_HOVER,
+            text_color=COR_TEXTO_BOTAO,
+            font=ctk.CTkFont(
+                family=FONTE_PRINCIPAL,
+                size=TAMANHO_BOTAO,
+                weight="bold",
+            ),
             command=self.selecionar_xml,
         )
         botao_xml.grid(
@@ -119,8 +169,11 @@ class MainWindow(ctk.CTk):
             area_selecao,
             text="Nenhum arquivo selecionado",
             anchor="w",
-            text_color="#6B7280",
-            font=ctk.CTkFont(size=13),
+            text_color=COR_TEXTO_SECUNDARIO,
+            font=ctk.CTkFont(
+                family=FONTE_PRINCIPAL,
+                size=TAMANHO_TEXTO,
+            ),
         )
         self.label_arquivo.grid(
             row=0,
@@ -132,8 +185,12 @@ class MainWindow(ctk.CTk):
             conteudo,
             text="Produtos encontrados: 0",
             anchor="w",
-            text_color="#1F2937",
-            font=ctk.CTkFont(size=15, weight="bold"),
+            text_color=COR_TEXTO,
+            font=ctk.CTkFont(
+                family=FONTE_PRINCIPAL,
+                size=TAMANHO_TEXTO_DESTAQUE,
+                weight="bold",
+            ),
         )
         self.label_quantidade.grid(
             row=2,
@@ -147,11 +204,11 @@ class MainWindow(ctk.CTk):
             row=3,
             column=0,
             sticky="nsew",
-)
+        )
 
         area_botoes = ctk.CTkFrame(
             conteudo,
-            fg_color="#FFFFFF",
+            fg_color=COR_FUNDO,
             corner_radius=0,
         )
         area_botoes.grid(
@@ -168,11 +225,15 @@ class MainWindow(ctk.CTk):
             width=140,
             height=38,
             corner_radius=4,
-            fg_color="#FFFFFF",
-            hover_color="#F3F4F6",
+            fg_color=COR_FUNDO,
+            hover_color=COR_FUNDO_SECUNDARIO,
             border_width=1,
-            border_color="#9CA3AF",
-            text_color="#374151",
+            border_color=COR_BORDA_ESCURA,
+            text_color=COR_TEXTO,
+            font=ctk.CTkFont(
+                family=FONTE_PRINCIPAL,
+                size=TAMANHO_BOTAO,
+            ),
         )
         botao_configuracoes.grid(
             row=0,
@@ -186,10 +247,14 @@ class MainWindow(ctk.CTk):
             width=165,
             height=38,
             corner_radius=4,
-            fg_color="#2563EB",
-            hover_color="#1D4ED8",
-            text_color="#FFFFFF",
-            font=ctk.CTkFont(size=14, weight="bold"),
+            fg_color=COR_AZUL,
+            hover_color=COR_AZUL_HOVER,
+            text_color=COR_TEXTO_BOTAO,
+            font=ctk.CTkFont(
+                family=FONTE_PRINCIPAL,
+                size=TAMANHO_BOTAO,
+                weight="bold",
+            ),
             state="disabled",
         )
         self.botao_iniciar.grid(
@@ -199,6 +264,8 @@ class MainWindow(ctk.CTk):
         )
 
     def selecionar_xml(self) -> None:
+        """Seleciona e processa o XML da nota fiscal."""
+
         caminho = filedialog.askopenfilename(
             title="Selecionar XML da nota fiscal",
             filetypes=[
@@ -213,8 +280,13 @@ class MainWindow(ctk.CTk):
         self.arquivo_xml = Path(caminho)
 
         try:
-            self.produtos = ler_produtos_xml(self.arquivo_xml)
-            preparar_produtos(self.produtos)
+            self.produtos = ler_produtos_xml(
+                self.arquivo_xml
+            )
+
+            preparar_produtos(
+                self.produtos
+            )
 
         except (ValueError, FileNotFoundError, OSError) as erro:
             self.produtos = []
@@ -222,6 +294,11 @@ class MainWindow(ctk.CTk):
 
             self.label_quantidade.configure(
                 text="Produtos encontrados: 0"
+            )
+
+            self.label_arquivo.configure(
+                text="Nenhum arquivo selecionado",
+                text_color=COR_TEXTO_SECUNDARIO,
             )
 
             self.botao_iniciar.configure(
@@ -238,38 +315,17 @@ class MainWindow(ctk.CTk):
 
         self.label_arquivo.configure(
             text=f"Arquivo: {self.arquivo_xml.name}",
-            text_color="#374151",
+            text_color=COR_TEXTO,
         )
 
         self.label_quantidade.configure(
             text=f"Produtos encontrados: {quantidade}"
         )
 
-        self.tabela_produtos.carregar_produtos(self.produtos)
+        self.tabela_produtos.carregar_produtos(
+            self.produtos
+        )
 
         self.botao_iniciar.configure(
             state="normal"
         )
-
-        print("\nPRODUTOS ENCONTRADOS")
-        print("-" * 70)
-
-        for numero, produto in enumerate(
-            self.produtos,
-            start=1,
-        ):
-            print(f"\nProduto {numero}")
-            print(f"Referência: {produto.referencia}")
-            print(f"Descrição: {produto.descricao_original}")
-            print(f"Código de barras: {produto.codigo_barras}")
-            print(f"NCM: {produto.ncm}")
-            print(f"CFOP: {produto.cfop}")
-            print(f"Quantidade: {produto.quantidade}")
-            print(
-                f"Valor unitário: "
-                f"R$ {produto.valor_unitario:.2f}"
-            )
-            print(
-                f"Valor total: "
-                f"R$ {produto.valor_total:.2f}"
-            )
