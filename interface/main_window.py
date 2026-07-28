@@ -1,5 +1,6 @@
 from pathlib import Path
 from tkinter import filedialog, messagebox
+from interface.product_table import ProductTable
 
 import customtkinter as ctk
 
@@ -140,30 +141,12 @@ class MainWindow(ctk.CTk):
             sticky="ew",
         )
 
-        area_produtos = ctk.CTkFrame(
-            conteudo,
-            fg_color="#FFFFFF",
-            border_width=1,
-            border_color="#D1D5DB",
-            corner_radius=3,
-        )
-        area_produtos.grid(
+        self.tabela_produtos = ProductTable(conteudo)
+        self.tabela_produtos.grid(
             row=3,
             column=0,
             sticky="nsew",
-        )
-
-        self.mensagem_produtos = ctk.CTkLabel(
-            area_produtos,
-            text="Selecione um XML para visualizar os produtos.",
-            text_color="#6B7280",
-            font=ctk.CTkFont(size=14),
-        )
-        self.mensagem_produtos.place(
-            relx=0.5,
-            rely=0.5,
-            anchor="center",
-        )
+)
 
         area_botoes = ctk.CTkFrame(
             conteudo,
@@ -233,6 +216,7 @@ class MainWindow(ctk.CTk):
 
         except (ValueError, FileNotFoundError, OSError) as erro:
             self.produtos = []
+            self.tabela_produtos.limpar()
 
             self.label_quantidade.configure(
                 text="Produtos encontrados: 0"
@@ -259,9 +243,7 @@ class MainWindow(ctk.CTk):
             text=f"Produtos encontrados: {quantidade}"
         )
 
-        self.mensagem_produtos.configure(
-            text=f"{quantidade} produtos carregados com sucesso."
-        )
+        self.tabela_produtos.carregar_produtos(self.produtos)
 
         self.botao_iniciar.configure(
             state="normal"
