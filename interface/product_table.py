@@ -15,6 +15,9 @@ from interface.styles import (
     TAMANHO_TABELA,
 )
 from models.produto import Produto
+from database.description_repository import (
+    salvar_descricao_aprendida,
+)
 
 
 def formatar_decimal(
@@ -324,6 +327,11 @@ class ProductTable(ctk.CTkFrame):
                 parent=self,
             )
             return
+
+        salvar_descricao_aprendida(
+        descricao_original=produto.descricao_original,
+        descricao_final=nova_descricao,
+        )
 
         produto.descricao_final = (
             f"{nova_descricao} "
