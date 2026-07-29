@@ -19,3 +19,7 @@ logs/*.log
 *.tmp
 
 automation/calibration.json
+assets/icons/vinculo_ativo.png
+assets/icons/vinculo_inativo.png
+assets/icons/codigo_preenchido.png
+assets/icons/codigo_vazio.png
