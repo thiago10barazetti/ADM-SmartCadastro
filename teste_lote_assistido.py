@@ -30,7 +30,7 @@ PONTOS_NECESSARIOS = (
     "botao_salvar",
 )
 
-MAXIMO_ITENS_TESTE = 5
+MAXIMO_ITENS_TESTE = 10
 
 
 class BatchTestWindow(ctk.CTk):
