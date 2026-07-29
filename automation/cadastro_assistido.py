@@ -16,6 +16,9 @@ from automation.code_detector import (
     obter_geometria_tabela,
     resolver_caminho,
 )
+from services.relatorio_execucao import (
+    RelatorioExecucao,
+)
 
 
 pyautogui.FAILSAFE = True
@@ -58,6 +61,9 @@ class CadastroAssistido:
         ao_atualizar_status: (
             Callable[[str, str], None] | None
         ) = None,
+        ao_atualizar_progresso: (
+            Callable[[int, int, str], None] | None
+        ) = None,
         ao_encerrar: (
             Callable[[str, dict], None] | None
         ) = None,
@@ -77,6 +83,9 @@ class CadastroAssistido:
         self.ao_atualizar_status = (
             ao_atualizar_status
         )
+        self.ao_atualizar_progresso = (
+            ao_atualizar_progresso
+        )
         self.ao_encerrar = ao_encerrar
 
         self.calibracao: dict = {}
@@ -85,6 +94,9 @@ class CadastroAssistido:
 
         self.itens_pulados: list[int] = []
         self.itens_salvos: list[int] = []
+
+        self.relatorio: RelatorioExecucao | None = None
+        self.caminho_relatorio = None
 
         self.cor_fundo_selecao: (
             tuple[int, int, int] | None
@@ -166,7 +178,17 @@ class CadastroAssistido:
         self.indice_atual = 0
         self.itens_pulados = []
         self.itens_salvos = []
+        self.relatorio = RelatorioExecucao(
+            modo=self.modo,
+            total_itens=quantidade,
+        )
+        self.caminho_relatorio = None
         self.em_execucao = True
+
+        self.atualizar_progresso(
+            0,
+            "Aguardando o primeiro produto.",
+        )
 
         self.atualizar_status(
             "Iniciando verificação dos produtos...",
@@ -314,6 +336,9 @@ class CadastroAssistido:
             return
 
         numero_item = self.indice_atual + 1
+        produto = self.produtos[
+            self.indice_atual
+        ]
 
         self.atualizar_status(
             (
@@ -321,6 +346,10 @@ class CadastroAssistido:
                 f"de {len(self.produtos)}..."
             ),
             "#2563EB",
+        )
+        self.atualizar_progresso(
+            self.indice_atual,
+            f"Verificando item {numero_item}.",
         )
 
         try:
@@ -330,25 +359,56 @@ class CadastroAssistido:
             )
 
         except pyautogui.FailSafeException:
-            self.interromper_com_erro(
+            mensagem = (
                 "Cadastro interrompido pela proteção."
+            )
+            self.registrar_resultado(
+                numero_item,
+                produto,
+                "INTERROMPIDO_PELA_PROTECAO",
+                mensagem,
+            )
+            self.interromper_com_erro(
+                mensagem
             )
             return
 
         except Exception as erro:
+            mensagem = (
+                f"Erro ao verificar o item "
+                f"{numero_item}: {erro}"
+            )
+            self.registrar_resultado(
+                numero_item,
+                produto,
+                "ERRO_DETECCAO",
+                str(erro),
+            )
             self.interromper_com_erro(
-                (
-                    f"Erro ao verificar o item "
-                    f"{numero_item}: {erro}"
-                )
+                mensagem
             )
             return
 
         if resultado.estado == "preenchido":
+            self.registrar_resultado(
+                numero_item,
+                produto,
+                "PULADO_JA_CADASTRADO",
+                "A coluna Código já estava preenchida.",
+            )
+
             self.itens_pulados.append(
                 numero_item
             )
             self.indice_atual += 1
+
+            self.atualizar_progresso(
+                self.indice_atual,
+                (
+                    f"Item {numero_item} pulado: "
+                    "já cadastrado."
+                ),
+            )
 
             self.master.after(
                 450,
@@ -357,23 +417,40 @@ class CadastroAssistido:
             return
 
         if resultado.estado == "incerto":
-            self.interromper_com_erro(
+            mensagem = (
+                f"O item {numero_item} apresentou "
+                "resultado incerto na coluna Código.\n\n"
+                "O cadastro foi interrompido sem "
+                "abrir esse produto."
+            )
+            self.registrar_resultado(
+                numero_item,
+                produto,
+                "LEITURA_INCERTA",
                 (
-                    f"O item {numero_item} apresentou "
-                    "resultado incerto na coluna Código.\n\n"
-                    "O cadastro foi interrompido sem "
-                    "abrir esse produto."
-                )
+                    f"Score atual: "
+                    f"{resultado.score_atual}"
+                ),
+            )
+            self.interromper_com_erro(
+                mensagem
             )
             return
 
         if resultado.estado != "vazio":
+            mensagem = (
+                f"O item {numero_item} retornou "
+                f"um estado desconhecido: "
+                f"{resultado.estado}"
+            )
+            self.registrar_resultado(
+                numero_item,
+                produto,
+                "ESTADO_DESCONHECIDO",
+                str(resultado.estado),
+            )
             self.interromper_com_erro(
-                (
-                    f"O item {numero_item} retornou "
-                    f"um estado desconhecido: "
-                    f"{resultado.estado}"
-                )
+                mensagem
             )
             return
 
@@ -617,17 +694,33 @@ class CadastroAssistido:
             )
 
         except pyautogui.FailSafeException:
-            self.interromper_com_erro(
+            mensagem = (
                 "Cadastro interrompido pela proteção."
+            )
+            self.registrar_resultado(
+                numero_item,
+                produto,
+                "INTERROMPIDO_PELA_PROTECAO",
+                mensagem,
+            )
+            self.interromper_com_erro(
+                mensagem
             )
             return
 
         except Exception as erro:
+            mensagem = (
+                f"Erro ao preparar o item "
+                f"{numero_item}: {erro}"
+            )
+            self.registrar_resultado(
+                numero_item,
+                produto,
+                "ERRO_PREPARACAO",
+                str(erro),
+            )
             self.interromper_com_erro(
-                (
-                    f"Erro ao preparar o item "
-                    f"{numero_item}: {erro}"
-                )
+                mensagem
             )
             return
 
@@ -683,12 +776,31 @@ class CadastroAssistido:
         if not confirmar:
             self.em_execucao = False
 
-            self.atualizar_status(
+            mensagem = (
+                "Cadastro interrompido. O produto atual "
+                "permaneceu aberto sem salvar."
+            )
+
+            self.registrar_resultado(
+                numero_item,
+                produto,
+                "INTERROMPIDO_PELO_USUARIO",
                 (
-                    "Cadastro interrompido. O produto atual "
-                    "permaneceu aberto sem salvar."
+                    "O cadastro foi preparado, mas "
+                    "não foi salvo."
                 ),
+            )
+            self.salvar_relatorio(
+                "interrompido"
+            )
+
+            self.atualizar_status(
+                mensagem,
                 "#B45309",
+            )
+            self.atualizar_progresso(
+                self.indice_atual,
+                "Execução interrompida pelo usuário.",
             )
 
             self.encerrar_callback(
@@ -709,6 +821,9 @@ class CadastroAssistido:
             return
 
         numero_item = self.indice_atual + 1
+        produto = self.produtos[
+            self.indice_atual
+        ]
 
         salvar = self.calibracao[
             "pontos"
@@ -722,24 +837,52 @@ class CadastroAssistido:
             time.sleep(2.8)
 
         except pyautogui.FailSafeException:
-            self.interromper_com_erro(
+            mensagem = (
                 "Salvamento interrompido pela proteção."
+            )
+            self.registrar_resultado(
+                numero_item,
+                produto,
+                "INTERROMPIDO_PELA_PROTECAO",
+                mensagem,
+            )
+            self.interromper_com_erro(
+                mensagem
             )
             return
 
         except Exception as erro:
+            mensagem = (
+                f"Erro ao salvar o item "
+                f"{numero_item}: {erro}"
+            )
+            self.registrar_resultado(
+                numero_item,
+                produto,
+                "ERRO_SALVAMENTO",
+                str(erro),
+            )
             self.interromper_com_erro(
-                (
-                    f"Erro ao salvar o item "
-                    f"{numero_item}: {erro}"
-                )
+                mensagem
             )
             return
+
+        self.registrar_resultado(
+            numero_item,
+            produto,
+            "SALVO",
+            "Produto cadastrado e salvo no ADM.",
+        )
 
         self.itens_salvos.append(
             numero_item
         )
         self.indice_atual += 1
+
+        self.atualizar_progresso(
+            self.indice_atual,
+            f"Item {numero_item} salvo.",
+        )
 
         self.master.after(
             500,
@@ -755,6 +898,15 @@ class CadastroAssistido:
         total = len(self.produtos)
         salvos = len(self.itens_salvos)
         pulados = len(self.itens_pulados)
+
+        caminho_relatorio = self.salvar_relatorio(
+            "concluido"
+        )
+
+        self.atualizar_progresso(
+            total,
+            "Todos os produtos foram processados.",
+        )
 
         self.atualizar_status(
             (
@@ -786,6 +938,8 @@ class CadastroAssistido:
                 f"Itens já cadastrados e pulados: {pulados}\n\n"
                 f"Salvos: {salvos_texto}\n"
                 f"Pulados: {pulados_texto}\n\n"
+                f"Relatório salvo em:\n"
+                f"{caminho_relatorio}\n\n"
                 "Confira no ADM os produtos processados."
             ),
             parent=self.master,
@@ -803,6 +957,14 @@ class CadastroAssistido:
 
         self.em_execucao = False
         self.restaurar_janela()
+        caminho_relatorio = self.salvar_relatorio(
+            "erro"
+        )
+
+        self.atualizar_progresso(
+            self.indice_atual,
+            "Execução interrompida por erro.",
+        )
 
         self.atualizar_status(
             mensagem,
@@ -811,7 +973,11 @@ class CadastroAssistido:
 
         messagebox.showerror(
             "Erro no cadastro",
-            mensagem,
+            (
+                f"{mensagem}\n\n"
+                f"Relatório salvo em:\n"
+                f"{caminho_relatorio}"
+            ),
             parent=self.master,
         )
 
@@ -844,6 +1010,57 @@ class CadastroAssistido:
                 cor,
             )
 
+    def atualizar_progresso(
+        self,
+        processados: int,
+        texto: str,
+    ) -> None:
+        """Envia o progresso atual à interface."""
+
+        if self.ao_atualizar_progresso is None:
+            return
+
+        self.ao_atualizar_progresso(
+            processados,
+            len(self.produtos),
+            texto,
+        )
+
+    def registrar_resultado(
+        self,
+        numero_item: int,
+        produto,
+        resultado_item: str,
+        detalhe: str = "",
+    ) -> None:
+        """Registra o resultado de um item no relatório."""
+
+        if self.relatorio is None:
+            return
+
+        self.relatorio.registrar(
+            numero_item=numero_item,
+            produto=produto,
+            resultado_item=resultado_item,
+            detalhe=detalhe,
+        )
+
+    def salvar_relatorio(
+        self,
+        resultado_geral: str,
+    ):
+        """Salva o relatório da execução."""
+
+        if self.relatorio is None:
+            return "Relatório não iniciado."
+
+        self.caminho_relatorio = (
+            self.relatorio.salvar(
+                resultado_geral
+            )
+        )
+        return self.caminho_relatorio
+
     def encerrar_callback(
         self,
         resultado: str,
@@ -856,6 +1073,12 @@ class CadastroAssistido:
         resumo = {
             "modo": self.modo,
             "total": len(self.produtos),
+            "processados": self.indice_atual,
+            "relatorio": (
+                str(self.caminho_relatorio)
+                if self.caminho_relatorio
+                else ""
+            ),
             "salvos": len(
                 self.itens_salvos
             ),

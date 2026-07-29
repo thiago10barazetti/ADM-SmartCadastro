@@ -43,8 +43,8 @@ class MainWindow(ctk.CTk):
         super().__init__()
 
         self.title("ADM SmartCadastro")
-        self.geometry("1000x650")
-        self.minsize(850, 550)
+        self.geometry("1000x745")
+        self.minsize(850, 650)
         self.configure(fg_color=COR_FUNDO)
 
         self.arquivo_xml: Path | None = None
@@ -231,6 +231,102 @@ class MainWindow(ctk.CTk):
             sticky="nsew",
         )
 
+        area_progresso = ctk.CTkFrame(
+            conteudo,
+            fg_color=COR_FUNDO,
+            corner_radius=0,
+        )
+        area_progresso.grid(
+            row=4,
+            column=0,
+            pady=(14, 0),
+            sticky="ew",
+        )
+        area_progresso.grid_columnconfigure(
+            0,
+            weight=1,
+        )
+
+        topo_progresso = ctk.CTkFrame(
+            area_progresso,
+            fg_color=COR_FUNDO,
+            corner_radius=0,
+        )
+        topo_progresso.grid(
+            row=0,
+            column=0,
+            sticky="ew",
+        )
+        topo_progresso.grid_columnconfigure(
+            0,
+            weight=1,
+        )
+
+        self.label_progresso = ctk.CTkLabel(
+            topo_progresso,
+            text="Progresso da execução",
+            anchor="w",
+            text_color=COR_TEXTO,
+            font=ctk.CTkFont(
+                family=FONTE_PRINCIPAL,
+                size=TAMANHO_TEXTO,
+                weight="bold",
+            ),
+        )
+        self.label_progresso.grid(
+            row=0,
+            column=0,
+            sticky="w",
+        )
+
+        self.label_contador_progresso = ctk.CTkLabel(
+            topo_progresso,
+            text="0/0",
+            anchor="e",
+            text_color=COR_TEXTO_SECUNDARIO,
+            font=ctk.CTkFont(
+                family=FONTE_PRINCIPAL,
+                size=TAMANHO_TEXTO,
+                weight="bold",
+            ),
+        )
+        self.label_contador_progresso.grid(
+            row=0,
+            column=1,
+            sticky="e",
+        )
+
+        self.barra_progresso = ctk.CTkProgressBar(
+            area_progresso,
+            height=12,
+            corner_radius=4,
+            fg_color=COR_BORDA,
+            progress_color=COR_AZUL,
+        )
+        self.barra_progresso.grid(
+            row=1,
+            column=0,
+            pady=(7, 5),
+            sticky="ew",
+        )
+        self.barra_progresso.set(0)
+
+        self.label_detalhe_progresso = ctk.CTkLabel(
+            area_progresso,
+            text="Aguardando a seleção do XML.",
+            anchor="w",
+            text_color=COR_TEXTO_SECUNDARIO,
+            font=ctk.CTkFont(
+                family=FONTE_PRINCIPAL,
+                size=TAMANHO_TEXTO,
+            ),
+        )
+        self.label_detalhe_progresso.grid(
+            row=2,
+            column=0,
+            sticky="ew",
+        )
+
         area_modo = ctk.CTkFrame(
             conteudo,
             fg_color=COR_FUNDO_SECUNDARIO,
@@ -239,9 +335,9 @@ class MainWindow(ctk.CTk):
             corner_radius=4,
         )
         area_modo.grid(
-            row=4,
+            row=5,
             column=0,
-            pady=(16, 0),
+            pady=(14, 0),
             sticky="ew",
         )
         area_modo.grid_columnconfigure(
@@ -326,7 +422,7 @@ class MainWindow(ctk.CTk):
             corner_radius=0,
         )
         area_botoes.grid(
-            row=5,
+            row=6,
             column=0,
             pady=(16, 0),
             sticky="ew",
@@ -466,6 +562,10 @@ class MainWindow(ctk.CTk):
             self.botao_iniciar.configure(
                 state="disabled"
             )
+            self.reiniciar_progresso(
+                0,
+                "A leitura do XML falhou.",
+            )
 
             messagebox.showerror(
                 "Erro ao ler XML",
@@ -488,6 +588,25 @@ class MainWindow(ctk.CTk):
 
         self.tabela_produtos.carregar_produtos(
             self.produtos
+        )
+        self.reiniciar_progresso(
+            quantidade,
+            "XML carregado. Aguardando o início.",
+        )
+
+    def reiniciar_progresso(
+        self,
+        total: int,
+        texto: str,
+    ) -> None:
+        """Reinicia a barra e os textos de progresso."""
+
+        self.barra_progresso.set(0)
+        self.label_contador_progresso.configure(
+            text=f"0/{total}"
+        )
+        self.label_detalhe_progresso.configure(
+            text=texto
         )
 
     def abrir_configuracoes(self) -> None:
@@ -648,6 +767,9 @@ class MainWindow(ctk.CTk):
             ao_atualizar_status=(
                 self.atualizar_status_cadastro
             ),
+            ao_atualizar_progresso=(
+                self.atualizar_progresso_cadastro
+            ),
             ao_encerrar=(
                 self.encerrar_cadastro
             ),
@@ -660,6 +782,11 @@ class MainWindow(ctk.CTk):
 
         self.controlador_cadastro = controlador
         self.cadastro_em_andamento = True
+
+        self.reiniciar_progresso(
+            len(self.produtos),
+            "Iniciando execução...",
+        )
 
         self.botao_iniciar.configure(
             state="disabled",
@@ -682,6 +809,36 @@ class MainWindow(ctk.CTk):
         )
         self.update_idletasks()
 
+    def atualizar_progresso_cadastro(
+        self,
+        processados: int,
+        total: int,
+        texto: str,
+    ) -> None:
+        """Atualiza a barra e o contador da execução."""
+
+        if total <= 0:
+            proporcao = 0
+        else:
+            proporcao = min(
+                1,
+                max(
+                    0,
+                    processados / total,
+                ),
+            )
+
+        self.barra_progresso.set(
+            proporcao
+        )
+        self.label_contador_progresso.configure(
+            text=f"{processados}/{total}"
+        )
+        self.label_detalhe_progresso.configure(
+            text=texto
+        )
+        self.update_idletasks()
+
     def encerrar_cadastro(
         self,
         resultado: str,
@@ -699,6 +856,16 @@ class MainWindow(ctk.CTk):
             state="normal"
         )
 
+        caminho_relatorio = resumo.get(
+            "relatorio",
+            "",
+        )
+        nome_relatorio = (
+            Path(caminho_relatorio).name
+            if caminho_relatorio
+            else "não gerado"
+        )
+
         if resultado == "concluido":
             self.label_quantidade.configure(
                 text=(
@@ -707,6 +874,14 @@ class MainWindow(ctk.CTk):
                     f"Já cadastrados: {resumo['pulados']}"
                 ),
                 text_color="#166534",
+            )
+            self.atualizar_progresso_cadastro(
+                resumo["total"],
+                resumo["total"],
+                (
+                    "Execução concluída. Relatório: "
+                    f"{nome_relatorio}"
+                ),
             )
 
         elif resultado == "interrompido":
@@ -717,6 +892,14 @@ class MainWindow(ctk.CTk):
                 ),
                 text_color="#B45309",
             )
+            self.atualizar_progresso_cadastro(
+                resumo["processados"],
+                resumo["total"],
+                (
+                    "Execução interrompida. Relatório: "
+                    f"{nome_relatorio}"
+                ),
+            )
 
         else:
             self.label_quantidade.configure(
@@ -725,6 +908,14 @@ class MainWindow(ctk.CTk):
                     "Confira a mensagem apresentada."
                 ),
                 text_color=COR_ERRO_TEXTO,
+            )
+            self.atualizar_progresso_cadastro(
+                resumo["processados"],
+                resumo["total"],
+                (
+                    "Erro na execução. Relatório: "
+                    f"{nome_relatorio}"
+                ),
             )
 
         invalidas = (
