@@ -8,6 +8,7 @@ from automation.cadastro_assistido import (
     MODO_ASSISTIDO,
     MODO_AUTOMATICO,
 )
+from interface.diagnostics_window import DiagnosticsWindow
 from interface.product_table import ProductTable
 from interface.reports_window import ReportsWindow
 from interface.settings_window import SettingsWindow
@@ -56,6 +57,9 @@ class MainWindow(ctk.CTk):
         ) = None
         self.janela_relatorios: (
             ReportsWindow | None
+        ) = None
+        self.janela_diagnostico: (
+            DiagnosticsWindow | None
         ) = None
 
         self.controlador_cadastro: (
@@ -431,7 +435,7 @@ class MainWindow(ctk.CTk):
             pady=(16, 0),
             sticky="ew",
         )
-        area_botoes.grid_columnconfigure(2, weight=1)
+        area_botoes.grid_columnconfigure(3, weight=1)
 
         self.botao_configuracoes = ctk.CTkButton(
             area_botoes,
@@ -480,6 +484,30 @@ class MainWindow(ctk.CTk):
             sticky="w",
         )
 
+        self.botao_diagnostico = ctk.CTkButton(
+            area_botoes,
+            text="Diagnóstico",
+            width=130,
+            height=38,
+            corner_radius=4,
+            fg_color=COR_FUNDO,
+            hover_color=COR_FUNDO_SECUNDARIO,
+            border_width=1,
+            border_color=COR_BORDA_ESCURA,
+            text_color=COR_TEXTO,
+            font=ctk.CTkFont(
+                family=FONTE_PRINCIPAL,
+                size=TAMANHO_BOTAO,
+            ),
+            command=self.abrir_diagnostico,
+        )
+        self.botao_diagnostico.grid(
+            row=0,
+            column=2,
+            padx=(12, 0),
+            sticky="w",
+        )
+
         self.botao_iniciar = ctk.CTkButton(
             area_botoes,
             text="Iniciar Cadastro Assistido",
@@ -499,7 +527,7 @@ class MainWindow(ctk.CTk):
         )
         self.botao_iniciar.grid(
             row=0,
-            column=3,
+            column=4,
             sticky="e",
         )
 
@@ -675,6 +703,24 @@ class MainWindow(ctk.CTk):
             master=self
         )
 
+    def abrir_diagnostico(self) -> None:
+        """Abre a janela de diagnóstico."""
+
+        if self.cadastro_em_andamento:
+            return
+
+        if (
+            self.janela_diagnostico is not None
+            and self.janela_diagnostico.winfo_exists()
+        ):
+            self.janela_diagnostico.focus()
+            self.janela_diagnostico.lift()
+            return
+
+        self.janela_diagnostico = DiagnosticsWindow(
+            master=self
+        )
+
     def atualizar_produtos_apos_configuracao(
         self,
     ) -> None:
@@ -712,6 +758,9 @@ class MainWindow(ctk.CTk):
             self.botao_relatorios.configure(
                 state="disabled"
             )
+            self.botao_diagnostico.configure(
+                state="disabled"
+            )
 
             if hasattr(
                 self,
@@ -734,6 +783,9 @@ class MainWindow(ctk.CTk):
             state="normal"
         )
         self.botao_relatorios.configure(
+            state="normal"
+        )
+        self.botao_diagnostico.configure(
             state="normal"
         )
 
@@ -860,6 +912,9 @@ class MainWindow(ctk.CTk):
         self.botao_relatorios.configure(
             state="disabled"
         )
+        self.botao_diagnostico.configure(
+            state="disabled"
+        )
 
     def atualizar_status_cadastro(
         self,
@@ -924,6 +979,9 @@ class MainWindow(ctk.CTk):
             state="normal"
         )
         self.botao_relatorios.configure(
+            state="normal"
+        )
+        self.botao_diagnostico.configure(
             state="normal"
         )
 
