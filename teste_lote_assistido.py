@@ -5,24 +5,23 @@ from tkinter import filedialog, messagebox
 import customtkinter as ctk
 import pyautogui
 import pyperclip
+from PIL import Image
 
-from automation.calibration_repository import (
-    carregar_calibracao,
+from automation.calibration_repository import carregar_calibracao
+from automation.code_detector import (
+    calcular_proporcao_fundo,
+    detectar_estado_codigo,
+    obter_cor_fundo_selecao,
+    obter_geometria_tabela,
+    resolver_caminho,
 )
-from database.settings_repository import (
-    carregar_configuracoes,
-)
-from services.preparacao_produtos import (
-    preparar_produtos,
-)
-from xml_reader.nfe_reader import (
-    ler_produtos_xml,
-)
+from database.settings_repository import carregar_configuracoes
+from services.preparacao_produtos import preparar_produtos
+from xml_reader.nfe_reader import ler_produtos_xml
 
 
 pyautogui.FAILSAFE = True
 pyautogui.PAUSE = 0.15
-
 
 PONTOS_NECESSARIOS = (
     "mais_primeira_linha",
@@ -31,32 +30,35 @@ PONTOS_NECESSARIOS = (
     "botao_salvar",
 )
 
+MAXIMO_ITENS_TESTE = 5
+
 
 class BatchTestWindow(ctk.CTk):
-    """Executa um pequeno lote com confirmação individual."""
+    """Executa lote assistido, pulando produtos já cadastrados."""
 
     def __init__(self) -> None:
         super().__init__()
 
         self.title("Teste de Lote Assistido")
-        self.geometry("720x650")
-        self.minsize(680, 610)
+        self.geometry("740x680")
+        self.minsize(700, 630)
         self.configure(fg_color="#FFFFFF")
 
         self.calibracao = carregar_calibracao()
         self.configuracoes = carregar_configuracoes()
-
         self.limite_descricao = int(
-            self.configuracoes.get(
-                "limite_descricao",
-                35,
-            )
+            self.configuracoes.get("limite_descricao", 35)
         )
 
         self.caminho_xml: Path | None = None
         self.produtos = []
         self.itens_lote = []
         self.indice_atual = 0
+        self.itens_pulados: list[int] = []
+        self.itens_salvos: list[int] = []
+
+        self.cor_fundo_selecao: tuple[int, int, int] | None = None
+        self.proporcao_referencia = 0.0
 
         self.grid_columnconfigure(0, weight=1)
         self.grid_rowconfigure(5, weight=1)
@@ -65,11 +67,9 @@ class BatchTestWindow(ctk.CTk):
         self.verificar_calibracao()
 
     def criar_interface(self) -> None:
-        """Cria a interface do teste."""
-
         titulo = ctk.CTkLabel(
             self,
-            text="Teste de lote assistido",
+            text="Teste de lote assistido com detecção",
             anchor="w",
             text_color="#1F2937",
             font=ctk.CTkFont(
@@ -90,12 +90,13 @@ class BatchTestWindow(ctk.CTk):
             self,
             text=(
                 "Selecione o mesmo XML importado no ADM. "
-                "O programa preparará alguns produtos consecutivos "
-                "e pedirá confirmação antes de salvar cada um."
+                "O programa verificará cada item pela coluna Código.\n\n"
+                "Itens já cadastrados serão pulados. Itens não cadastrados "
+                "serão preparados e pedirão confirmação antes do salvamento."
             ),
             anchor="w",
             justify="left",
-            wraplength=650,
+            wraplength=670,
             text_color="#6B7280",
             font=ctk.CTkFont(
                 family="Segoe UI",
@@ -230,7 +231,7 @@ class BatchTestWindow(ctk.CTk):
             padx=(0, 18),
             pady=16,
         )
-        self.campo_quantidade.insert(0, "3")
+        self.campo_quantidade.insert(0, "5")
 
         self.label_status = ctk.CTkLabel(
             self,
@@ -273,9 +274,7 @@ class BatchTestWindow(ctk.CTk):
             "1.0",
             "Selecione o XML para visualizar os produtos.",
         )
-        self.campo_resumo.configure(
-            state="disabled"
-        )
+        self.campo_resumo.configure(state="disabled")
 
         self.botao_executar = ctk.CTkButton(
             self,
@@ -318,12 +317,7 @@ class BatchTestWindow(ctk.CTk):
         )
 
     def verificar_calibracao(self) -> None:
-        """Confere os pontos e a resolução."""
-
-        pontos = self.calibracao.get(
-            "pontos",
-            {},
-        )
+        pontos = self.calibracao.get("pontos", {})
 
         faltantes = [
             ponto
@@ -332,36 +326,40 @@ class BatchTestWindow(ctk.CTk):
         ]
 
         if faltantes:
-            self.label_status.configure(
-                text="Calibração incompleta.",
-                text_color="#991B1B",
-            )
-            self.botao_executar.configure(
-                state="disabled"
+            self.desabilitar_por_erro(
+                "Calibração incompleta. Pontos faltantes: "
+                + ", ".join(faltantes)
             )
             return
 
-        tela_calibrada = self.calibracao.get(
-            "tela",
-            {},
-        )
+        if not self.calibracao.get("codigo_produto"):
+            self.desabilitar_por_erro(
+                "A calibração da coluna Código não foi encontrada."
+            )
+            return
+
+        tela_calibrada = self.calibracao.get("tela", {})
         tela_atual = pyautogui.size()
 
         if (
-            tela_calibrada.get("largura")
-            != tela_atual.width
-            or tela_calibrada.get("altura")
-            != tela_atual.height
+            tela_calibrada.get("largura") != tela_atual.width
+            or tela_calibrada.get("altura") != tela_atual.height
         ):
-            self.label_status.configure(
-                text=(
-                    "A resolução atual é diferente "
-                    "da calibração."
-                ),
-                text_color="#991B1B",
+            self.desabilitar_por_erro(
+                "A resolução atual é diferente da calibração."
             )
-            self.botao_executar.configure(
-                state="disabled"
+            return
+
+        try:
+            self.carregar_referencia_selecao()
+
+        except (
+            ValueError,
+            FileNotFoundError,
+            OSError,
+        ) as erro:
+            self.desabilitar_por_erro(
+                f"Erro na calibração da coluna Código: {erro}"
             )
             return
 
@@ -373,9 +371,66 @@ class BatchTestWindow(ctk.CTk):
             text_color="#166534",
         )
 
-    def selecionar_xml(self) -> None:
-        """Seleciona e prepara os produtos do XML."""
+    def desabilitar_por_erro(self, mensagem: str) -> None:
+        self.label_status.configure(
+            text=mensagem,
+            text_color="#991B1B",
+        )
+        self.botao_executar.configure(state="disabled")
 
+    def carregar_referencia_selecao(self) -> None:
+        configuracao = self.calibracao["codigo_produto"]
+
+        caminho_preenchido = resolver_caminho(
+            configuracao["template_preenchido"]
+        )
+        caminho_vazio = resolver_caminho(
+            configuracao["template_vazio"]
+        )
+
+        if not caminho_preenchido.exists():
+            raise FileNotFoundError(
+                f"Captura preenchida não encontrada: "
+                f"{caminho_preenchido}"
+            )
+
+        if not caminho_vazio.exists():
+            raise FileNotFoundError(
+                f"Captura vazia não encontrada: "
+                f"{caminho_vazio}"
+            )
+
+        with Image.open(caminho_preenchido) as imagem:
+            modelo_preenchido = imagem.convert("RGB").copy()
+
+        with Image.open(caminho_vazio) as imagem:
+            modelo_vazio = imagem.convert("RGB").copy()
+
+        self.cor_fundo_selecao = obter_cor_fundo_selecao(
+            modelo_preenchido=modelo_preenchido,
+            modelo_vazio=modelo_vazio,
+        )
+
+        proporcao_preenchido = calcular_proporcao_fundo(
+            modelo_preenchido,
+            self.cor_fundo_selecao,
+        )
+        proporcao_vazio = calcular_proporcao_fundo(
+            modelo_vazio,
+            self.cor_fundo_selecao,
+        )
+
+        self.proporcao_referencia = min(
+            proporcao_preenchido,
+            proporcao_vazio,
+        )
+
+        if self.proporcao_referencia <= 0:
+            raise ValueError(
+                "A referência visual da seleção é inválida."
+            )
+
+    def selecionar_xml(self) -> None:
         caminho = filedialog.askopenfilename(
             title="Selecionar XML de teste",
             filetypes=[
@@ -388,9 +443,7 @@ class BatchTestWindow(ctk.CTk):
             return
 
         try:
-            produtos = ler_produtos_xml(
-                Path(caminho)
-            )
+            produtos = ler_produtos_xml(Path(caminho))
             preparar_produtos(produtos)
 
         except (
@@ -419,17 +472,13 @@ class BatchTestWindow(ctk.CTk):
         self.atualizar_resumo()
 
     def atualizar_resumo(self) -> None:
-        """Mostra os produtos preparados."""
-
         linhas = []
 
         for numero, produto in enumerate(
             self.produtos,
             start=1,
         ):
-            quantidade = len(
-                produto.descricao_final
-            )
+            quantidade = len(produto.descricao_final)
 
             linhas.append(
                 f"{numero:02d}. "
@@ -438,24 +487,15 @@ class BatchTestWindow(ctk.CTk):
                 f"{quantidade}/{self.limite_descricao}"
             )
 
-        self.campo_resumo.configure(
-            state="normal"
-        )
-        self.campo_resumo.delete(
-            "1.0",
-            "end",
-        )
+        self.campo_resumo.configure(state="normal")
+        self.campo_resumo.delete("1.0", "end")
         self.campo_resumo.insert(
             "1.0",
             "\n".join(linhas),
         )
-        self.campo_resumo.configure(
-            state="disabled"
-        )
+        self.campo_resumo.configure(state="disabled")
 
     def preparar_lote(self) -> None:
-        """Valida o lote antes da execução."""
-
         if not self.produtos:
             messagebox.showwarning(
                 "XML necessário",
@@ -488,51 +528,23 @@ class BatchTestWindow(ctk.CTk):
             )
             return
 
-        if quantidade > 5:
+        if quantidade > MAXIMO_ITENS_TESTE:
             messagebox.showwarning(
                 "Lote muito grande",
                 (
-                    "Neste primeiro teste, use no máximo "
-                    "5 produtos."
+                    "Neste primeiro teste integrado, use no máximo "
+                    f"{MAXIMO_ITENS_TESTE} produtos."
                 ),
                 parent=self,
             )
             return
 
-        item_final = (
-            item_inicial + quantidade - 1
-        )
+        item_final = item_inicial + quantidade - 1
 
         if item_final > len(self.produtos):
             messagebox.showwarning(
                 "Lote inválido",
                 "O lote ultrapassa os produtos do XML.",
-                parent=self,
-            )
-            return
-
-        linhas_visiveis = int(
-            self.calibracao.get(
-                "calculos",
-                {},
-            ).get(
-                "linhas_visiveis_estimadas",
-                0,
-            )
-        )
-
-        if (
-            linhas_visiveis
-            and item_final > linhas_visiveis
-        ):
-            messagebox.showwarning(
-                "Itens fora da área visível",
-                (
-                    "Neste teste, todos os produtos precisam "
-                    "estar visíveis sem rolar a tabela.\n\n"
-                    f"Linhas visíveis estimadas: "
-                    f"{linhas_visiveis}."
-                ),
                 parent=self,
             )
             return
@@ -569,13 +581,14 @@ class BatchTestWindow(ctk.CTk):
         confirmar = messagebox.askokcancel(
             "Confirmar lote assistido",
             (
-                f"Serão preparados {quantidade} produtos, "
+                f"Serão verificados {quantidade} produtos, "
                 f"do item {item_inicial} ao {item_final}.\n\n"
-                "Antes de cada salvamento haverá uma "
-                "confirmação individual.\n\n"
-                "Confirme que o ADM está maximizado, "
-                "a nota está aberta e todos esses itens "
-                "possuem o botão +."
+                "• Produtos já cadastrados serão pulados.\n"
+                "• Produtos não cadastrados serão preparados.\n"
+                "• Antes de cada salvamento haverá confirmação.\n"
+                "• Resultado incerto ou erro interromperá o lote.\n\n"
+                "Confirme que o ADM está maximizado e que "
+                "a mesma nota do XML está aberta."
             ),
             parent=self,
         )
@@ -585,6 +598,8 @@ class BatchTestWindow(ctk.CTk):
 
         self.itens_lote = selecionados
         self.indice_atual = 0
+        self.itens_pulados = []
+        self.itens_salvos = []
 
         self.label_status.configure(
             text="Iniciando lote assistido...",
@@ -593,62 +608,213 @@ class BatchTestWindow(ctk.CTk):
 
         self.withdraw()
         self.after(
-            500,
+            600,
+            self.verificar_item_atual,
+        )
+
+    def verificar_item_atual(self) -> None:
+        if self.indice_atual >= len(
+            self.itens_lote
+        ):
+            self.finalizar_lote()
+            return
+
+        numero_item, _ = self.itens_lote[
+            self.indice_atual
+        ]
+
+        try:
+            resultado = detectar_estado_codigo(
+                calibracao=self.calibracao,
+                numero_item=numero_item,
+            )
+
+        except pyautogui.FailSafeException:
+            self.mostrar_erro(
+                "Lote interrompido pela proteção."
+            )
+            return
+
+        except Exception as erro:
+            self.mostrar_erro(
+                f"Erro ao verificar o item {numero_item}: {erro}"
+            )
+            return
+
+        if resultado.estado == "preenchido":
+            self.itens_pulados.append(numero_item)
+            self.indice_atual += 1
+            self.after(
+                450,
+                self.verificar_item_atual,
+            )
+            return
+
+        if resultado.estado == "incerto":
+            self.mostrar_erro(
+                (
+                    f"O item {numero_item} apresentou resultado "
+                    "incerto na coluna Código.\n\n"
+                    "O lote foi interrompido sem abrir o cadastro."
+                )
+            )
+            return
+
+        if resultado.estado != "vazio":
+            self.mostrar_erro(
+                (
+                    f"O item {numero_item} retornou um estado "
+                    f"desconhecido: {resultado.estado}"
+                )
+            )
+            return
+
+        self.after(
+            350,
             self.preparar_item_atual,
         )
 
-    def calcular_posicao_item(
-        self,
-        numero_item: int,
-    ) -> tuple[int, int]:
-        """Calcula a posição da linha escolhida."""
+    def localizar_y_linha_selecionada(self) -> int:
+        if self.cor_fundo_selecao is None:
+            raise ValueError(
+                "A referência visual da seleção não foi carregada."
+            )
 
-        pontos = self.calibracao["pontos"]
-        primeira = pontos[
-            "mais_primeira_linha"
-        ]
-        segunda = pontos[
-            "mais_segunda_linha"
-        ]
-
-        altura_linha = abs(
-            segunda["y"] - primeira["y"]
+        configuracao = self.calibracao["codigo_produto"]
+        coluna_x = int(configuracao["coluna_x"])
+        largura = int(
+            configuracao.get("largura_captura", 36)
+        )
+        altura = int(
+            configuracao.get("altura_captura", 14)
         )
 
-        x = primeira["x"]
-        y = (
-            primeira["y"]
-            + (numero_item - 1) * altura_linha
+        (
+            primeira_y,
+            altura_linha,
+            limite_y,
+        ) = obter_geometria_tabela(
+            self.calibracao
         )
 
-        return x, y
+        tela = pyautogui.screenshot()
+
+        esquerda = max(
+            0,
+            coluna_x - largura // 2,
+        )
+
+        if esquerda + largura > tela.width:
+            esquerda = tela.width - largura
+
+        inicio_busca = max(
+            altura // 2,
+            primeira_y - altura_linha,
+        )
+        fim_busca = min(
+            tela.height - altura // 2,
+            limite_y,
+        )
+
+        resultados: list[
+            tuple[int, float]
+        ] = []
+
+        for centro_y in range(
+            inicio_busca,
+            fim_busca + 1,
+        ):
+            topo = centro_y - altura // 2
+
+            imagem = tela.crop(
+                (
+                    esquerda,
+                    topo,
+                    esquerda + largura,
+                    topo + altura,
+                )
+            )
+
+            proporcao = calcular_proporcao_fundo(
+                imagem=imagem,
+                cor_fundo=self.cor_fundo_selecao,
+            )
+
+            resultados.append(
+                (centro_y, proporcao)
+            )
+
+        if not resultados:
+            raise RuntimeError(
+                "Não foi possível analisar a tabela."
+            )
+
+        melhor_y, melhor_proporcao = max(
+            resultados,
+            key=lambda resultado: resultado[1],
+        )
+
+        limite_minimo = max(
+            0.08,
+            self.proporcao_referencia * 0.30,
+        )
+
+        if melhor_proporcao < limite_minimo:
+            raise RuntimeError(
+                "Não foi possível localizar a linha selecionada."
+            )
+
+        limite_faixa = melhor_proporcao * 0.78
+
+        candidatos = [
+            centro_y
+            for centro_y, proporcao in resultados
+            if (
+                proporcao >= limite_faixa
+                and abs(
+                    centro_y - melhor_y
+                ) <= altura_linha
+            )
+        ]
+
+        if candidatos:
+            return round(
+                (
+                    min(candidatos)
+                    + max(candidatos)
+                )
+                / 2
+            )
+
+        return melhor_y
 
     def preparar_item_atual(self) -> None:
-        """Preenche o produto atual até o salvamento."""
-
-        numero_item, produto = (
-            self.itens_lote[
-                self.indice_atual
-            ]
-        )
-
+        numero_item, produto = self.itens_lote[
+            self.indice_atual
+        ]
         pontos = self.calibracao["pontos"]
 
         try:
-            x, y = self.calcular_posicao_item(
-                numero_item
+            linha_y = (
+                self.localizar_y_linha_selecionada()
+            )
+
+            x_mais = int(
+                pontos[
+                    "mais_primeira_linha"
+                ]["x"]
             )
 
             pyautogui.moveTo(
-                x,
-                y,
-                duration=0.6,
+                x_mais,
+                linha_y,
+                duration=0.55,
             )
-            time.sleep(0.7)
+            time.sleep(0.5)
 
             pyautogui.doubleClick(
-                x,
-                y,
+                x_mais,
+                linha_y,
                 interval=0.20,
             )
             time.sleep(1.7)
@@ -659,10 +825,7 @@ class BatchTestWindow(ctk.CTk):
                 interval=0.20,
             )
 
-            pyautogui.hotkey(
-                "ctrl",
-                "a",
-            )
+            pyautogui.hotkey("ctrl", "a")
             time.sleep(0.3)
 
             pyperclip.copy(
@@ -670,10 +833,7 @@ class BatchTestWindow(ctk.CTk):
             )
             time.sleep(0.2)
 
-            pyautogui.hotkey(
-                "ctrl",
-                "v",
-            )
+            pyautogui.hotkey("ctrl", "v")
             time.sleep(0.8)
 
             tributacao = pontos[
@@ -711,20 +871,19 @@ class BatchTestWindow(ctk.CTk):
 
         except Exception as erro:
             self.mostrar_erro(
-                f"Erro ao preparar item: {erro}"
+                (
+                    f"Erro ao preparar o item "
+                    f"{numero_item}: {erro}"
+                )
             )
             return
 
         self.confirmar_item_atual()
 
     def confirmar_item_atual(self) -> None:
-        """Pede confirmação antes do salvamento."""
-
-        numero_item, produto = (
-            self.itens_lote[
-                self.indice_atual
-            ]
-        )
+        numero_item, produto = self.itens_lote[
+            self.indice_atual
+        ]
 
         self.deiconify()
         self.lift()
@@ -735,8 +894,7 @@ class BatchTestWindow(ctk.CTk):
         confirmar = messagebox.askyesno(
             "Confirmar salvamento",
             (
-                f"Item {numero_item} de "
-                f"{self.itens_lote[-1][0]}\n\n"
+                f"Item {numero_item}\n\n"
                 f"Referência: {produto.referencia}\n\n"
                 f"Descrição:\n"
                 f"{produto.descricao_final}\n\n"
@@ -765,7 +923,9 @@ class BatchTestWindow(ctk.CTk):
         )
 
     def salvar_item_atual(self) -> None:
-        """Salva o produto e avança para o próximo."""
+        numero_item, _ = self.itens_lote[
+            self.indice_atual
+        ]
 
         salvar = self.calibracao[
             "pontos"
@@ -776,7 +936,6 @@ class BatchTestWindow(ctk.CTk):
                 salvar["x"],
                 salvar["y"],
             )
-
             time.sleep(2.8)
 
         except pyautogui.FailSafeException:
@@ -787,48 +946,62 @@ class BatchTestWindow(ctk.CTk):
 
         except Exception as erro:
             self.mostrar_erro(
-                f"Erro ao salvar item: {erro}"
+                f"Erro ao salvar o item {numero_item}: {erro}"
             )
             return
 
+        self.itens_salvos.append(numero_item)
         self.indice_atual += 1
 
-        if self.indice_atual >= len(
-            self.itens_lote
-        ):
-            self.finalizar_lote()
-            return
-
         self.after(
-            400,
-            self.preparar_item_atual,
+            500,
+            self.verificar_item_atual,
         )
 
     def finalizar_lote(self) -> None:
-        """Finaliza o teste assistido."""
-
         self.deiconify()
         self.lift()
         self.focus_force()
 
-        quantidade = len(
-            self.itens_lote
-        )
+        total = len(self.itens_lote)
+        salvos = len(self.itens_salvos)
+        pulados = len(self.itens_pulados)
 
         self.label_status.configure(
             text=(
-                f"Lote concluído: {quantidade} "
-                "produtos processados."
+                f"Lote concluído: {salvos} salvos e "
+                f"{pulados} já cadastrados."
             ),
             text_color="#166534",
+        )
+
+        salvos_texto = (
+            ", ".join(
+                str(item)
+                for item in self.itens_salvos
+            )
+            if self.itens_salvos
+            else "nenhum"
+        )
+
+        pulados_texto = (
+            ", ".join(
+                str(item)
+                for item in self.itens_pulados
+            )
+            if self.itens_pulados
+            else "nenhum"
         )
 
         messagebox.showinfo(
             "Lote concluído",
             (
-                f"O teste processou {quantidade} produtos.\n\n"
-                "Confira no ADM se todas as linhas receberam "
-                "código, descrição de cadastro e vínculo."
+                f"Itens verificados: {total}\n"
+                f"Itens salvos: {salvos}\n"
+                f"Itens já cadastrados e pulados: {pulados}\n\n"
+                f"Salvos: {salvos_texto}\n"
+                f"Pulados: {pulados_texto}\n\n"
+                "Confira no ADM os produtos salvos."
             ),
             parent=self,
         )
@@ -837,8 +1010,6 @@ class BatchTestWindow(ctk.CTk):
         self,
         mensagem: str,
     ) -> None:
-        """Restaura a janela e mostra o erro."""
-
         self.deiconify()
         self.lift()
         self.focus_force()
