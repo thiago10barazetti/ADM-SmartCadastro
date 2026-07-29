@@ -3,6 +3,9 @@ from tkinter import filedialog, messagebox
 
 import customtkinter as ctk
 
+from automation.cadastro_assistido import (
+    CadastroAssistido,
+)
 from interface.product_table import ProductTable
 from interface.settings_window import SettingsWindow
 from interface.styles import (
@@ -48,6 +51,11 @@ class MainWindow(ctk.CTk):
         self.janela_configuracoes: (
             SettingsWindow | None
         ) = None
+
+        self.controlador_cadastro: (
+            CadastroAssistido | None
+        ) = None
+        self.cadastro_em_andamento = False
 
         self.grid_columnconfigure(0, weight=1)
         self.grid_rowconfigure(1, weight=1)
@@ -259,7 +267,7 @@ class MainWindow(ctk.CTk):
         self.botao_iniciar = ctk.CTkButton(
             area_botoes,
             text="Iniciar Cadastro",
-            width=165,
+            width=180,
             height=38,
             corner_radius=4,
             fg_color=COR_AZUL,
@@ -271,6 +279,7 @@ class MainWindow(ctk.CTk):
                 weight="bold",
             ),
             state="disabled",
+            command=self.iniciar_cadastro,
         )
         self.botao_iniciar.grid(
             row=0,
@@ -280,6 +289,9 @@ class MainWindow(ctk.CTk):
 
     def selecionar_xml(self) -> None:
         """Seleciona e processa o XML."""
+
+        if self.cadastro_em_andamento:
+            return
 
         caminho = filedialog.askopenfilename(
             title="Selecionar XML da nota fiscal",
@@ -351,6 +363,9 @@ class MainWindow(ctk.CTk):
     def abrir_configuracoes(self) -> None:
         """Abre a janela de configurações."""
 
+        if self.cadastro_em_andamento:
+            return
+
         if (
             self.janela_configuracoes is not None
             and self.janela_configuracoes.winfo_exists()
@@ -370,7 +385,10 @@ class MainWindow(ctk.CTk):
     ) -> None:
         """Reprocessa os produtos após alterar regras."""
 
-        if not self.produtos:
+        if (
+            not self.produtos
+            or self.cadastro_em_andamento
+        ):
             return
 
         preparar_produtos(
@@ -384,6 +402,13 @@ class MainWindow(ctk.CTk):
     def atualizar_estado_botao(self) -> None:
         """Habilita ou bloqueia o início do cadastro."""
 
+        if self.cadastro_em_andamento:
+            self.botao_iniciar.configure(
+                state="disabled",
+                text="Cadastro em andamento...",
+            )
+            return
+
         quantidade = len(self.produtos)
 
         if quantidade == 0:
@@ -393,7 +418,8 @@ class MainWindow(ctk.CTk):
             )
 
             self.botao_iniciar.configure(
-                state="disabled"
+                state="disabled",
+                text="Iniciar Cadastro",
             )
             return
 
@@ -417,7 +443,8 @@ class MainWindow(ctk.CTk):
             )
 
             self.botao_iniciar.configure(
-                state="disabled"
+                state="disabled",
+                text="Iniciar Cadastro",
             )
             return
 
@@ -430,5 +457,129 @@ class MainWindow(ctk.CTk):
         )
 
         self.botao_iniciar.configure(
-            state="normal"
+            state="normal",
+            text="Iniciar Cadastro",
         )
+
+    def iniciar_cadastro(self) -> None:
+        """Inicia o cadastro assistido no ADM."""
+
+        if self.cadastro_em_andamento:
+            return
+
+        if not self.produtos:
+            messagebox.showwarning(
+                "Produtos necessários",
+                "Selecione primeiro o XML da nota.",
+                parent=self,
+            )
+            return
+
+        invalidas = (
+            self.tabela_produtos
+            .contar_descricoes_invalidas()
+        )
+
+        if invalidas > 0:
+            messagebox.showwarning(
+                "Descrições inválidas",
+                (
+                    "Corrija as descrições destacadas "
+                    "antes de iniciar."
+                ),
+                parent=self,
+            )
+            return
+
+        controlador = CadastroAssistido(
+            master=self,
+            produtos=self.produtos,
+            ao_atualizar_status=(
+                self.atualizar_status_cadastro
+            ),
+            ao_encerrar=(
+                self.encerrar_cadastro
+            ),
+        )
+
+        iniciado = controlador.iniciar()
+
+        if not iniciado:
+            return
+
+        self.controlador_cadastro = controlador
+        self.cadastro_em_andamento = True
+
+        self.botao_iniciar.configure(
+            state="disabled",
+            text="Cadastro em andamento...",
+        )
+
+    def atualizar_status_cadastro(
+        self,
+        texto: str,
+        cor: str,
+    ) -> None:
+        """Exibe o andamento do cadastro na interface."""
+
+        self.label_quantidade.configure(
+            text=texto,
+            text_color=cor,
+        )
+        self.update_idletasks()
+
+    def encerrar_cadastro(
+        self,
+        resultado: str,
+        resumo: dict,
+    ) -> None:
+        """Restaura a interface ao terminar o processo."""
+
+        self.cadastro_em_andamento = False
+        self.controlador_cadastro = None
+
+        self.botao_iniciar.configure(
+            text="Iniciar Cadastro",
+        )
+
+        if resultado == "concluido":
+            self.label_quantidade.configure(
+                text=(
+                    "Cadastro concluído | "
+                    f"Salvos: {resumo['salvos']} | "
+                    f"Já cadastrados: {resumo['pulados']}"
+                ),
+                text_color="#166534",
+            )
+
+        elif resultado == "interrompido":
+            self.label_quantidade.configure(
+                text=(
+                    "Cadastro interrompido pelo usuário. "
+                    "O produto atual não foi salvo."
+                ),
+                text_color="#B45309",
+            )
+
+        else:
+            self.label_quantidade.configure(
+                text=(
+                    "Cadastro interrompido por erro. "
+                    "Confira a mensagem apresentada."
+                ),
+                text_color=COR_ERRO_TEXTO,
+            )
+
+        invalidas = (
+            self.tabela_produtos
+            .contar_descricoes_invalidas()
+        )
+
+        if self.produtos and invalidas == 0:
+            self.botao_iniciar.configure(
+                state="normal"
+            )
+        else:
+            self.botao_iniciar.configure(
+                state="disabled"
+            )
