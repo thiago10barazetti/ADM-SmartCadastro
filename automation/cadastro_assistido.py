@@ -29,23 +29,32 @@ PONTOS_NECESSARIOS = (
     "botao_salvar",
 )
 
+MODO_ASSISTIDO = "assistido"
+MODO_AUTOMATICO = "automatico"
+MODOS_VALIDOS = (
+    MODO_ASSISTIDO,
+    MODO_AUTOMATICO,
+)
+
 
 class CadastroAssistido:
     """
-    Controla o cadastro assistido dos produtos no ADM.
+    Controla o cadastro dos produtos no ADM.
 
     Fluxo:
     - verifica a coluna Código;
     - pula produtos já cadastrados;
     - prepara produtos com Código vazio;
     - interrompe em resultado incerto ou erro;
-    - pede confirmação antes de cada salvamento.
+    - no modo assistido, confirma cada salvamento;
+    - no modo automático, salva sem confirmação individual.
     """
 
     def __init__(
         self,
         master,
         produtos: list,
+        modo: str = MODO_ASSISTIDO,
         ao_atualizar_status: (
             Callable[[str, str], None] | None
         ) = None,
@@ -55,6 +64,15 @@ class CadastroAssistido:
     ) -> None:
         self.master = master
         self.produtos = list(produtos)
+
+        modo_normalizado = modo.strip().lower()
+
+        if modo_normalizado not in MODOS_VALIDOS:
+            raise ValueError(
+                f"Modo de cadastro inválido: {modo}"
+            )
+
+        self.modo = modo_normalizado
 
         self.ao_atualizar_status = (
             ao_atualizar_status
@@ -107,14 +125,33 @@ class CadastroAssistido:
 
         quantidade = len(self.produtos)
 
+        if self.modo == MODO_AUTOMATICO:
+            titulo_confirmacao = (
+                "Confirmar cadastro automático"
+            )
+            regra_salvamento = (
+                "ATENÇÃO: produtos não cadastrados serão "
+                "salvos automaticamente, sem confirmação "
+                "individual.\n"
+            )
+        else:
+            titulo_confirmacao = (
+                "Confirmar cadastro assistido"
+            )
+            regra_salvamento = (
+                "Antes de cada salvamento haverá "
+                "confirmação individual.\n"
+            )
+
         confirmar = messagebox.askokcancel(
-            "Confirmar cadastro",
+            titulo_confirmacao,
             (
                 f"Serão verificados {quantidade} produtos.\n\n"
                 "• Produtos já cadastrados serão pulados.\n"
                 "• Produtos não cadastrados serão preparados.\n"
-                "• Antes de cada salvamento haverá confirmação.\n"
-                "• Resultado incerto ou erro interromperá o processo.\n\n"
+                f"• {regra_salvamento}"
+                "• Resultado incerto ou erro interromperá "
+                "o processo.\n\n"
                 "Confirme que o ADM está maximizado e que "
                 "a mesma nota do XML está aberta.\n\n"
                 "Emergência: mova o mouse para o canto "
@@ -594,6 +631,21 @@ class CadastroAssistido:
             )
             return
 
+        if self.modo == MODO_AUTOMATICO:
+            self.atualizar_status(
+                (
+                    f"Salvando item {numero_item} "
+                    f"de {len(self.produtos)}..."
+                ),
+                "#2563EB",
+            )
+
+            self.master.after(
+                900,
+                self.salvar_item_atual,
+            )
+            return
+
         self.confirmar_item_atual()
 
     def confirmar_item_atual(self) -> None:
@@ -719,9 +771,16 @@ class CadastroAssistido:
             self.itens_pulados
         )
 
+        modo_exibicao = (
+            "Automático"
+            if self.modo == MODO_AUTOMATICO
+            else "Assistido"
+        )
+
         messagebox.showinfo(
             "Cadastro concluído",
             (
+                f"Modo utilizado: {modo_exibicao}\n"
                 f"Itens verificados: {total}\n"
                 f"Itens salvos: {salvos}\n"
                 f"Itens já cadastrados e pulados: {pulados}\n\n"
@@ -795,6 +854,7 @@ class CadastroAssistido:
             return
 
         resumo = {
+            "modo": self.modo,
             "total": len(self.produtos),
             "salvos": len(
                 self.itens_salvos

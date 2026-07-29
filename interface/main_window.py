@@ -5,6 +5,8 @@ import customtkinter as ctk
 
 from automation.cadastro_assistido import (
     CadastroAssistido,
+    MODO_ASSISTIDO,
+    MODO_AUTOMATICO,
 )
 from interface.product_table import ProductTable
 from interface.settings_window import SettingsWindow
@@ -56,6 +58,7 @@ class MainWindow(ctk.CTk):
             CadastroAssistido | None
         ) = None
         self.cadastro_em_andamento = False
+        self.modo_cadastro = MODO_ASSISTIDO
 
         self.grid_columnconfigure(0, weight=1)
         self.grid_rowconfigure(1, weight=1)
@@ -228,15 +231,104 @@ class MainWindow(ctk.CTk):
             sticky="nsew",
         )
 
+        area_modo = ctk.CTkFrame(
+            conteudo,
+            fg_color=COR_FUNDO_SECUNDARIO,
+            border_width=1,
+            border_color=COR_BORDA,
+            corner_radius=4,
+        )
+        area_modo.grid(
+            row=4,
+            column=0,
+            pady=(16, 0),
+            sticky="ew",
+        )
+        area_modo.grid_columnconfigure(
+            1,
+            weight=1,
+        )
+
+        label_modo_titulo = ctk.CTkLabel(
+            area_modo,
+            text="Modo de execução",
+            text_color=COR_TEXTO,
+            font=ctk.CTkFont(
+                family=FONTE_PRINCIPAL,
+                size=TAMANHO_TEXTO,
+                weight="bold",
+            ),
+        )
+        label_modo_titulo.grid(
+            row=0,
+            column=0,
+            padx=(16, 14),
+            pady=(12, 4),
+            sticky="w",
+        )
+
+        self.seletor_modo = ctk.CTkSegmentedButton(
+            area_modo,
+            values=[
+                "Assistido",
+                "Automático",
+            ],
+            height=34,
+            corner_radius=4,
+            selected_color=COR_AZUL,
+            selected_hover_color=COR_AZUL_HOVER,
+            unselected_color=COR_FUNDO,
+            unselected_hover_color=COR_FUNDO_SECUNDARIO,
+            text_color=COR_TEXTO,
+            font=ctk.CTkFont(
+                family=FONTE_PRINCIPAL,
+                size=TAMANHO_TEXTO,
+                weight="bold",
+            ),
+            command=self.alterar_modo_cadastro,
+        )
+        self.seletor_modo.grid(
+            row=0,
+            column=1,
+            padx=(0, 16),
+            pady=(12, 4),
+            sticky="e",
+        )
+        self.seletor_modo.set(
+            "Assistido"
+        )
+
+        self.label_modo = ctk.CTkLabel(
+            area_modo,
+            text=(
+                "Confirma cada produto antes de salvar."
+            ),
+            anchor="w",
+            justify="left",
+            text_color=COR_TEXTO_SECUNDARIO,
+            font=ctk.CTkFont(
+                family=FONTE_PRINCIPAL,
+                size=TAMANHO_TEXTO,
+            ),
+        )
+        self.label_modo.grid(
+            row=1,
+            column=0,
+            columnspan=2,
+            padx=16,
+            pady=(2, 12),
+            sticky="ew",
+        )
+
         area_botoes = ctk.CTkFrame(
             conteudo,
             fg_color=COR_FUNDO,
             corner_radius=0,
         )
         area_botoes.grid(
-            row=4,
+            row=5,
             column=0,
-            pady=(20, 0),
+            pady=(16, 0),
             sticky="ew",
         )
         area_botoes.grid_columnconfigure(1, weight=1)
@@ -266,8 +358,8 @@ class MainWindow(ctk.CTk):
 
         self.botao_iniciar = ctk.CTkButton(
             area_botoes,
-            text="Iniciar Cadastro",
-            width=180,
+            text="Iniciar Cadastro Assistido",
+            width=220,
             height=38,
             corner_radius=4,
             fg_color=COR_AZUL,
@@ -286,6 +378,44 @@ class MainWindow(ctk.CTk):
             column=2,
             sticky="e",
         )
+
+    def alterar_modo_cadastro(
+        self,
+        valor: str,
+    ) -> None:
+        """Atualiza o modo escolhido pelo usuário."""
+
+        if valor == "Automático":
+            self.modo_cadastro = MODO_AUTOMATICO
+            descricao = (
+                "Salva sem confirmação individual. "
+                "Erros e leituras incertas interrompem "
+                "o processo."
+            )
+        else:
+            self.modo_cadastro = MODO_ASSISTIDO
+            descricao = (
+                "Confirma cada produto antes de salvar."
+            )
+
+        self.label_modo.configure(
+            text=descricao
+        )
+
+        if not self.cadastro_em_andamento:
+            self.botao_iniciar.configure(
+                text=self.obter_texto_botao_iniciar()
+            )
+
+    def obter_texto_botao_iniciar(
+        self,
+    ) -> str:
+        """Retorna o texto do botão conforme o modo."""
+
+        if self.modo_cadastro == MODO_AUTOMATICO:
+            return "Iniciar Cadastro Automático"
+
+        return "Iniciar Cadastro Assistido"
 
     def selecionar_xml(self) -> None:
         """Seleciona e processa o XML."""
@@ -402,12 +532,32 @@ class MainWindow(ctk.CTk):
     def atualizar_estado_botao(self) -> None:
         """Habilita ou bloqueia o início do cadastro."""
 
+        texto_botao = (
+            self.obter_texto_botao_iniciar()
+        )
+
         if self.cadastro_em_andamento:
             self.botao_iniciar.configure(
                 state="disabled",
                 text="Cadastro em andamento...",
             )
+
+            if hasattr(
+                self,
+                "seletor_modo",
+            ):
+                self.seletor_modo.configure(
+                    state="disabled"
+                )
             return
+
+        if hasattr(
+            self,
+            "seletor_modo",
+        ):
+            self.seletor_modo.configure(
+                state="normal"
+            )
 
         quantidade = len(self.produtos)
 
@@ -419,7 +569,7 @@ class MainWindow(ctk.CTk):
 
             self.botao_iniciar.configure(
                 state="disabled",
-                text="Iniciar Cadastro",
+                text=texto_botao,
             )
             return
 
@@ -444,7 +594,7 @@ class MainWindow(ctk.CTk):
 
             self.botao_iniciar.configure(
                 state="disabled",
-                text="Iniciar Cadastro",
+                text=texto_botao,
             )
             return
 
@@ -458,7 +608,7 @@ class MainWindow(ctk.CTk):
 
         self.botao_iniciar.configure(
             state="normal",
-            text="Iniciar Cadastro",
+            text=texto_botao,
         )
 
     def iniciar_cadastro(self) -> None:
@@ -494,6 +644,7 @@ class MainWindow(ctk.CTk):
         controlador = CadastroAssistido(
             master=self,
             produtos=self.produtos,
+            modo=self.modo_cadastro,
             ao_atualizar_status=(
                 self.atualizar_status_cadastro
             ),
@@ -513,6 +664,9 @@ class MainWindow(ctk.CTk):
         self.botao_iniciar.configure(
             state="disabled",
             text="Cadastro em andamento...",
+        )
+        self.seletor_modo.configure(
+            state="disabled"
         )
 
     def atualizar_status_cadastro(
@@ -539,7 +693,10 @@ class MainWindow(ctk.CTk):
         self.controlador_cadastro = None
 
         self.botao_iniciar.configure(
-            text="Iniciar Cadastro",
+            text=self.obter_texto_botao_iniciar()
+        )
+        self.seletor_modo.configure(
+            state="normal"
         )
 
         if resultado == "concluido":
