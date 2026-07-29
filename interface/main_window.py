@@ -9,6 +9,7 @@ from automation.cadastro_assistido import (
     MODO_AUTOMATICO,
 )
 from interface.product_table import ProductTable
+from interface.reports_window import ReportsWindow
 from interface.settings_window import SettingsWindow
 from interface.styles import (
     COR_AZUL,
@@ -52,6 +53,9 @@ class MainWindow(ctk.CTk):
 
         self.janela_configuracoes: (
             SettingsWindow | None
+        ) = None
+        self.janela_relatorios: (
+            ReportsWindow | None
         ) = None
 
         self.controlador_cadastro: (
@@ -427,9 +431,9 @@ class MainWindow(ctk.CTk):
             pady=(16, 0),
             sticky="ew",
         )
-        area_botoes.grid_columnconfigure(1, weight=1)
+        area_botoes.grid_columnconfigure(2, weight=1)
 
-        botao_configuracoes = ctk.CTkButton(
+        self.botao_configuracoes = ctk.CTkButton(
             area_botoes,
             text="Configurações",
             width=140,
@@ -446,9 +450,33 @@ class MainWindow(ctk.CTk):
             ),
             command=self.abrir_configuracoes,
         )
-        botao_configuracoes.grid(
+        self.botao_configuracoes.grid(
             row=0,
             column=0,
+            sticky="w",
+        )
+
+        self.botao_relatorios = ctk.CTkButton(
+            area_botoes,
+            text="Relatórios",
+            width=130,
+            height=38,
+            corner_radius=4,
+            fg_color=COR_FUNDO,
+            hover_color=COR_FUNDO_SECUNDARIO,
+            border_width=1,
+            border_color=COR_BORDA_ESCURA,
+            text_color=COR_TEXTO,
+            font=ctk.CTkFont(
+                family=FONTE_PRINCIPAL,
+                size=TAMANHO_BOTAO,
+            ),
+            command=self.abrir_relatorios,
+        )
+        self.botao_relatorios.grid(
+            row=0,
+            column=1,
+            padx=(12, 0),
             sticky="w",
         )
 
@@ -471,7 +499,7 @@ class MainWindow(ctk.CTk):
         )
         self.botao_iniciar.grid(
             row=0,
-            column=2,
+            column=3,
             sticky="e",
         )
 
@@ -629,6 +657,24 @@ class MainWindow(ctk.CTk):
             ),
         )
 
+    def abrir_relatorios(self) -> None:
+        """Abre a janela de relatórios."""
+
+        if self.cadastro_em_andamento:
+            return
+
+        if (
+            self.janela_relatorios is not None
+            and self.janela_relatorios.winfo_exists()
+        ):
+            self.janela_relatorios.focus()
+            self.janela_relatorios.lift()
+            return
+
+        self.janela_relatorios = ReportsWindow(
+            master=self
+        )
+
     def atualizar_produtos_apos_configuracao(
         self,
     ) -> None:
@@ -660,6 +706,12 @@ class MainWindow(ctk.CTk):
                 state="disabled",
                 text="Cadastro em andamento...",
             )
+            self.botao_configuracoes.configure(
+                state="disabled"
+            )
+            self.botao_relatorios.configure(
+                state="disabled"
+            )
 
             if hasattr(
                 self,
@@ -677,6 +729,13 @@ class MainWindow(ctk.CTk):
             self.seletor_modo.configure(
                 state="normal"
             )
+
+        self.botao_configuracoes.configure(
+            state="normal"
+        )
+        self.botao_relatorios.configure(
+            state="normal"
+        )
 
         quantidade = len(self.produtos)
 
@@ -795,6 +854,12 @@ class MainWindow(ctk.CTk):
         self.seletor_modo.configure(
             state="disabled"
         )
+        self.botao_configuracoes.configure(
+            state="disabled"
+        )
+        self.botao_relatorios.configure(
+            state="disabled"
+        )
 
     def atualizar_status_cadastro(
         self,
@@ -853,6 +918,12 @@ class MainWindow(ctk.CTk):
             text=self.obter_texto_botao_iniciar()
         )
         self.seletor_modo.configure(
+            state="normal"
+        )
+        self.botao_configuracoes.configure(
+            state="normal"
+        )
+        self.botao_relatorios.configure(
             state="normal"
         )
 
