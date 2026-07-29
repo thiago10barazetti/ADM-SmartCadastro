@@ -1,5 +1,7 @@
+import ctypes
+import sys
 from pathlib import Path
-from tkinter import filedialog, messagebox
+from tkinter import PhotoImage, filedialog, messagebox
 
 import customtkinter as ctk
 
@@ -34,6 +36,39 @@ from services.preparacao_produtos import preparar_produtos
 from xml_reader.nfe_reader import ler_produtos_xml
 
 
+def caminho_recurso(*partes: str) -> Path:
+    """Localiza arquivos no projeto e no executável do PyInstaller."""
+
+    base = Path(
+        getattr(
+            sys,
+            "_MEIPASS",
+            Path(__file__).resolve().parents[1],
+        )
+    )
+
+    return base.joinpath(*partes)
+
+
+def configurar_identidade_windows() -> None:
+    """Define a identidade usada pelo Windows na barra de tarefas."""
+
+    if sys.platform != "win32":
+        return
+
+    try:
+        ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(
+            "ADM.SmartCadastro.1.0"
+        )
+    except (
+        AttributeError,
+        OSError,
+    ):
+        pass
+
+
+configurar_identidade_windows()
+
 ctk.set_appearance_mode("light")
 ctk.set_default_color_theme("blue")
 
@@ -45,6 +80,12 @@ class MainWindow(ctk.CTk):
         super().__init__()
 
         self.title("ADM SmartCadastro")
+        self.configurar_icone_janela()
+        self.after(
+            150,
+            self.configurar_icone_janela,
+        )
+
         self.geometry("1000x745")
         self.minsize(850, 650)
         self.configure(fg_color=COR_FUNDO)
@@ -73,6 +114,41 @@ class MainWindow(ctk.CTk):
 
         self.criar_cabecalho()
         self.criar_conteudo()
+
+    def configurar_icone_janela(self) -> None:
+        """Aplica o ícone à janela e à barra de tarefas."""
+
+        caminho_ico = caminho_recurso(
+            "assets",
+            "adm_smartcadastro.ico",
+        )
+        caminho_png = caminho_recurso(
+            "assets",
+            "adm_smartcadastro.png",
+        )
+
+        if caminho_ico.exists():
+            try:
+                self.iconbitmap(
+                    str(caminho_ico)
+                )
+                self.iconbitmap(
+                    default=str(caminho_ico)
+                )
+            except Exception:
+                pass
+
+        if caminho_png.exists():
+            try:
+                self._icone_janela = PhotoImage(
+                    file=str(caminho_png)
+                )
+                self.iconphoto(
+                    True,
+                    self._icone_janela,
+                )
+            except Exception:
+                self._icone_janela = None
 
     def criar_cabecalho(self) -> None:
         """Cria o cabeçalho principal."""

@@ -3,6 +3,7 @@ from tkinter import messagebox
 
 import customtkinter as ctk
 
+from abbreviation.defaults import CONFIGURACOES_PADRAO
 from database.settings_repository import (
     carregar_configuracoes,
     salvar_configuracoes,
@@ -38,8 +39,8 @@ class SettingsWindow(ctk.CTkToplevel):
         self.configuracoes = carregar_configuracoes()
 
         self.title("Configurações - ADM SmartCadastro")
-        self.geometry("900x620")
-        self.minsize(760, 520)
+        self.geometry("1080x700")
+        self.minsize(920, 600)
         self.configure(fg_color=COR_FUNDO)
 
         self.transient(master)
@@ -130,6 +131,7 @@ class SettingsWindow(ctk.CTkToplevel):
             "Abreviações",
             "Tamanhos",
             "Cores",
+            "Código secreto",
             "Limite",
         )
 
@@ -176,6 +178,7 @@ class SettingsWindow(ctk.CTkToplevel):
             ),
         )
 
+        self.criar_campo_codigo_secreto()
         self.campo_limite = self.criar_campo_limite()
 
     def criar_campo_texto(
@@ -233,6 +236,736 @@ class SettingsWindow(ctk.CTkToplevel):
         )
 
         return campo
+
+    def criar_campo_codigo_secreto(self) -> None:
+        """Cria a aba de configuração do código secreto."""
+
+        aba = self.abas.tab("Código secreto")
+        aba.configure(
+            fg_color=COR_FUNDO_SECUNDARIO
+        )
+
+        aba.grid_columnconfigure(0, weight=1)
+        aba.grid_rowconfigure(2, weight=1)
+
+        topo = ctk.CTkFrame(
+            aba,
+            fg_color=COR_FUNDO_SECUNDARIO,
+            corner_radius=0,
+        )
+        topo.grid(
+            row=0,
+            column=0,
+            padx=18,
+            pady=(16, 8),
+            sticky="ew",
+        )
+        topo.grid_columnconfigure(0, weight=1)
+
+        textos = ctk.CTkFrame(
+            topo,
+            fg_color=COR_FUNDO_SECUNDARIO,
+            corner_radius=0,
+        )
+        textos.grid(
+            row=0,
+            column=0,
+            sticky="ew",
+        )
+
+        titulo = ctk.CTkLabel(
+            textos,
+            text="Código secreto de custo",
+            anchor="w",
+            text_color=COR_TEXTO,
+            font=ctk.CTkFont(
+                family=FONTE_PRINCIPAL,
+                size=16,
+                weight="bold",
+            ),
+        )
+        titulo.pack(anchor="w")
+
+        explicacao = ctk.CTkLabel(
+            textos,
+            text=(
+                "Ative ou desative o código e defina o símbolo "
+                "correspondente a cada número do custo inteiro."
+            ),
+            anchor="w",
+            justify="left",
+            text_color=COR_TEXTO_SECUNDARIO,
+            font=ctk.CTkFont(
+                family=FONTE_PRINCIPAL,
+                size=TAMANHO_TEXTO,
+            ),
+        )
+        explicacao.pack(
+            anchor="w",
+            pady=(3, 0),
+        )
+
+        self.variavel_codigo_ativo = ctk.BooleanVar(
+            value=True
+        )
+
+        self.switch_codigo_ativo = ctk.CTkSwitch(
+            topo,
+            text="Ativar código secreto",
+            variable=self.variavel_codigo_ativo,
+            onvalue=True,
+            offvalue=False,
+            command=self.atualizar_estado_codigo,
+            text_color=COR_TEXTO,
+            progress_color=COR_AZUL,
+            button_color=COR_AZUL,
+            button_hover_color=COR_AZUL_HOVER,
+            font=ctk.CTkFont(
+                family=FONTE_PRINCIPAL,
+                size=TAMANHO_TEXTO,
+                weight="bold",
+            ),
+        )
+        self.switch_codigo_ativo.grid(
+            row=0,
+            column=1,
+            padx=(18, 0),
+            sticky="e",
+        )
+
+        self.label_estado_codigo = ctk.CTkLabel(
+            aba,
+            text="",
+            anchor="w",
+            text_color=COR_TEXTO_SECUNDARIO,
+            font=ctk.CTkFont(
+                family=FONTE_PRINCIPAL,
+                size=12,
+            ),
+        )
+        self.label_estado_codigo.grid(
+            row=1,
+            column=0,
+            padx=18,
+            sticky="ew",
+        )
+
+        area_configuracao = ctk.CTkFrame(
+            aba,
+            fg_color=COR_FUNDO,
+            border_width=1,
+            border_color=COR_BORDA,
+            corner_radius=4,
+        )
+        area_configuracao.grid(
+            row=2,
+            column=0,
+            padx=18,
+            pady=(8, 12),
+            sticky="nsew",
+        )
+        area_configuracao.grid_columnconfigure(
+            0,
+            weight=1,
+        )
+
+        area_delimitadores = ctk.CTkFrame(
+            area_configuracao,
+            fg_color=COR_FUNDO,
+            corner_radius=0,
+        )
+        area_delimitadores.grid(
+            row=0,
+            column=0,
+            padx=16,
+            pady=(14, 8),
+            sticky="ew",
+        )
+        area_delimitadores.grid_columnconfigure(
+            4,
+            weight=1,
+        )
+
+        label_prefixo = ctk.CTkLabel(
+            area_delimitadores,
+            text="Símbolo inicial",
+            text_color=COR_TEXTO,
+            font=ctk.CTkFont(
+                family=FONTE_PRINCIPAL,
+                size=TAMANHO_TEXTO,
+                weight="bold",
+            ),
+        )
+        label_prefixo.grid(
+            row=0,
+            column=0,
+            padx=(0, 8),
+        )
+
+        self.campo_codigo_prefixo = ctk.CTkEntry(
+            area_delimitadores,
+            width=58,
+            height=36,
+            justify="center",
+            fg_color=COR_FUNDO_SECUNDARIO,
+            text_color=COR_TEXTO,
+            border_color=COR_BORDA,
+            border_width=1,
+            corner_radius=4,
+            font=ctk.CTkFont(
+                family=FONTE_PRINCIPAL,
+                size=16,
+                weight="bold",
+            ),
+        )
+        self.campo_codigo_prefixo.grid(
+            row=0,
+            column=1,
+            padx=(0, 22),
+        )
+
+        label_sufixo = ctk.CTkLabel(
+            area_delimitadores,
+            text="Símbolo final",
+            text_color=COR_TEXTO,
+            font=ctk.CTkFont(
+                family=FONTE_PRINCIPAL,
+                size=TAMANHO_TEXTO,
+                weight="bold",
+            ),
+        )
+        label_sufixo.grid(
+            row=0,
+            column=2,
+            padx=(0, 8),
+        )
+
+        self.campo_codigo_sufixo = ctk.CTkEntry(
+            area_delimitadores,
+            width=58,
+            height=36,
+            justify="center",
+            fg_color=COR_FUNDO_SECUNDARIO,
+            text_color=COR_TEXTO,
+            border_color=COR_BORDA,
+            border_width=1,
+            corner_radius=4,
+            font=ctk.CTkFont(
+                family=FONTE_PRINCIPAL,
+                size=16,
+                weight="bold",
+            ),
+        )
+        self.campo_codigo_sufixo.grid(
+            row=0,
+            column=3,
+        )
+
+        botao_restaurar = ctk.CTkButton(
+            area_delimitadores,
+            text="Restaurar padrão",
+            width=145,
+            height=34,
+            corner_radius=4,
+            fg_color=COR_FUNDO,
+            hover_color=COR_FUNDO_SECUNDARIO,
+            border_width=1,
+            border_color=COR_BORDA,
+            text_color=COR_TEXTO,
+            font=ctk.CTkFont(
+                family=FONTE_PRINCIPAL,
+                size=TAMANHO_BOTAO,
+            ),
+            command=self.restaurar_codigo_padrao,
+        )
+        botao_restaurar.grid(
+            row=0,
+            column=5,
+            sticky="e",
+        )
+
+        label_mapeamento = ctk.CTkLabel(
+            area_configuracao,
+            text="Símbolo de cada número",
+            anchor="w",
+            text_color=COR_TEXTO,
+            font=ctk.CTkFont(
+                family=FONTE_PRINCIPAL,
+                size=TAMANHO_TEXTO,
+                weight="bold",
+            ),
+        )
+        label_mapeamento.grid(
+            row=1,
+            column=0,
+            padx=16,
+            pady=(4, 6),
+            sticky="ew",
+        )
+
+        grade_simbolos = ctk.CTkFrame(
+            area_configuracao,
+            fg_color=COR_FUNDO,
+            corner_radius=0,
+        )
+        grade_simbolos.grid(
+            row=2,
+            column=0,
+            padx=16,
+            sticky="ew",
+        )
+
+        for coluna in range(5):
+            grade_simbolos.grid_columnconfigure(
+                coluna,
+                weight=1,
+            )
+
+        self.campos_codigo_simbolos: dict[
+            str,
+            ctk.CTkEntry,
+        ] = {}
+
+        for indice, numero in enumerate(
+            "0123456789"
+        ):
+            linha = indice // 5
+            coluna = indice % 5
+
+            cartao = ctk.CTkFrame(
+                grade_simbolos,
+                fg_color=COR_FUNDO_SECUNDARIO,
+                border_width=1,
+                border_color=COR_BORDA,
+                corner_radius=4,
+            )
+            cartao.grid(
+                row=linha,
+                column=coluna,
+                padx=(
+                    0 if coluna == 0 else 5,
+                    0 if coluna == 4 else 5,
+                ),
+                pady=5,
+                sticky="ew",
+            )
+            cartao.grid_columnconfigure(
+                1,
+                weight=1,
+            )
+
+            label_numero = ctk.CTkLabel(
+                cartao,
+                text=f"{numero} =",
+                text_color=COR_TEXTO,
+                font=ctk.CTkFont(
+                    family=FONTE_PRINCIPAL,
+                    size=TAMANHO_TEXTO,
+                    weight="bold",
+                ),
+            )
+            label_numero.grid(
+                row=0,
+                column=0,
+                padx=(10, 5),
+                pady=9,
+            )
+
+            campo = ctk.CTkEntry(
+                cartao,
+                width=52,
+                height=32,
+                justify="center",
+                fg_color=COR_FUNDO,
+                text_color=COR_TEXTO,
+                border_color=COR_BORDA,
+                border_width=1,
+                corner_radius=4,
+                font=ctk.CTkFont(
+                    family=FONTE_PRINCIPAL,
+                    size=15,
+                    weight="bold",
+                ),
+            )
+            campo.grid(
+                row=0,
+                column=1,
+                padx=(0, 10),
+                pady=7,
+                sticky="e",
+            )
+            campo.bind(
+                "<KeyRelease>",
+                self.atualizar_previa_codigo,
+            )
+
+            self.campos_codigo_simbolos[
+                numero
+            ] = campo
+
+        self.campo_codigo_prefixo.bind(
+            "<KeyRelease>",
+            self.atualizar_previa_codigo,
+        )
+        self.campo_codigo_sufixo.bind(
+            "<KeyRelease>",
+            self.atualizar_previa_codigo,
+        )
+
+        area_previa = ctk.CTkFrame(
+            area_configuracao,
+            fg_color=COR_FUNDO_SECUNDARIO,
+            border_width=1,
+            border_color=COR_BORDA,
+            corner_radius=4,
+        )
+        area_previa.grid(
+            row=3,
+            column=0,
+            padx=16,
+            pady=(12, 14),
+            sticky="ew",
+        )
+        area_previa.grid_columnconfigure(
+            1,
+            weight=1,
+        )
+
+        label_previa = ctk.CTkLabel(
+            area_previa,
+            text="Prévia para o custo 159:",
+            text_color=COR_TEXTO_SECUNDARIO,
+            font=ctk.CTkFont(
+                family=FONTE_PRINCIPAL,
+                size=TAMANHO_TEXTO,
+            ),
+        )
+        label_previa.grid(
+            row=0,
+            column=0,
+            padx=(12, 8),
+            pady=10,
+        )
+
+        self.label_previa_codigo = ctk.CTkLabel(
+            area_previa,
+            text="(AEI)",
+            anchor="w",
+            text_color=COR_AZUL,
+            font=ctk.CTkFont(
+                family=FONTE_PRINCIPAL,
+                size=17,
+                weight="bold",
+            ),
+        )
+        self.label_previa_codigo.grid(
+            row=0,
+            column=1,
+            padx=(0, 12),
+            pady=10,
+            sticky="w",
+        )
+
+    def carregar_codigo_secreto(self) -> None:
+        """Carrega o código secreto salvo nos campos."""
+
+        padrao = CONFIGURACOES_PADRAO[
+            "codigo_secreto"
+        ]
+        configuracao = self.configuracoes.get(
+            "codigo_secreto",
+            {},
+        )
+
+        ativo = configuracao.get(
+            "ativo",
+            padrao["ativo"],
+        )
+
+        simbolos = dict(
+            padrao["simbolos"]
+        )
+        simbolos_salvos = configuracao.get(
+            "simbolos"
+        )
+
+        if isinstance(simbolos_salvos, dict):
+            simbolos.update(
+                {
+                    str(numero): str(simbolo)
+                    for numero, simbolo
+                    in simbolos_salvos.items()
+                    if str(numero) in simbolos
+                }
+            )
+
+        prefixo = configuracao.get(
+            "prefixo",
+            padrao["prefixo"],
+        )
+        sufixo = configuracao.get(
+            "sufixo",
+            padrao["sufixo"],
+        )
+
+        self.variavel_codigo_ativo.set(
+            bool(ativo)
+        )
+
+        self.campo_codigo_prefixo.delete(
+            0,
+            "end",
+        )
+        self.campo_codigo_prefixo.insert(
+            0,
+            str(prefixo),
+        )
+
+        self.campo_codigo_sufixo.delete(
+            0,
+            "end",
+        )
+        self.campo_codigo_sufixo.insert(
+            0,
+            str(sufixo),
+        )
+
+        for numero, campo in (
+            self.campos_codigo_simbolos.items()
+        ):
+            campo.delete(
+                0,
+                "end",
+            )
+            campo.insert(
+                0,
+                simbolos[numero],
+            )
+
+        self.atualizar_estado_codigo()
+
+    def restaurar_codigo_padrao(self) -> None:
+        """Restaura o mapeamento padrão do código."""
+
+        padrao = CONFIGURACOES_PADRAO[
+            "codigo_secreto"
+        ]
+
+        self.variavel_codigo_ativo.set(
+            padrao["ativo"]
+        )
+
+        self.campo_codigo_prefixo.configure(
+            state="normal"
+        )
+        self.campo_codigo_sufixo.configure(
+            state="normal"
+        )
+
+        self.campo_codigo_prefixo.delete(
+            0,
+            "end",
+        )
+        self.campo_codigo_prefixo.insert(
+            0,
+            padrao["prefixo"],
+        )
+
+        self.campo_codigo_sufixo.delete(
+            0,
+            "end",
+        )
+        self.campo_codigo_sufixo.insert(
+            0,
+            padrao["sufixo"],
+        )
+
+        for numero, campo in (
+            self.campos_codigo_simbolos.items()
+        ):
+            campo.configure(
+                state="normal"
+            )
+            campo.delete(
+                0,
+                "end",
+            )
+            campo.insert(
+                0,
+                padrao["simbolos"][numero],
+            )
+
+        self.atualizar_estado_codigo()
+
+    def atualizar_estado_codigo(self) -> None:
+        """Ativa ou bloqueia os campos do código."""
+
+        ativo = self.variavel_codigo_ativo.get()
+        estado = (
+            "normal"
+            if ativo
+            else "disabled"
+        )
+
+        self.campo_codigo_prefixo.configure(
+            state=estado
+        )
+        self.campo_codigo_sufixo.configure(
+            state=estado
+        )
+
+        for campo in (
+            self.campos_codigo_simbolos.values()
+        ):
+            campo.configure(
+                state=estado
+            )
+
+        self.label_estado_codigo.configure(
+            text=(
+                "Ativado: o código será acrescentado "
+                "ao final da descrição."
+                if ativo
+                else (
+                    "Desativado: nenhum código de custo "
+                    "será acrescentado à descrição."
+                )
+            ),
+            text_color=(
+                "#166534"
+                if ativo
+                else COR_TEXTO_SECUNDARIO
+            ),
+        )
+
+        self.atualizar_previa_codigo()
+
+    def atualizar_previa_codigo(
+        self,
+        _evento=None,
+    ) -> None:
+        """Atualiza a prévia do código configurado."""
+
+        if not self.variavel_codigo_ativo.get():
+            self.label_previa_codigo.configure(
+                text="Código desativado",
+                text_color=COR_TEXTO_SECUNDARIO,
+            )
+            return
+
+        prefixo = (
+            self.campo_codigo_prefixo.get()
+            or "?"
+        )
+        sufixo = (
+            self.campo_codigo_sufixo.get()
+            or "?"
+        )
+
+        simbolos = {
+            numero: (
+                campo.get().strip().upper()
+                or "?"
+            )
+            for numero, campo in (
+                self.campos_codigo_simbolos.items()
+            )
+        }
+
+        previa = (
+            f"{prefixo}"
+            f"{simbolos['1']}"
+            f"{simbolos['5']}"
+            f"{simbolos['9']}"
+            f"{sufixo}"
+        )
+
+        self.label_previa_codigo.configure(
+            text=previa,
+            text_color=COR_AZUL,
+        )
+
+    def ler_codigo_secreto(self) -> dict:
+        """Lê e valida as configurações do código."""
+
+        prefixo = (
+            self.campo_codigo_prefixo
+            .get()
+            .strip()
+        )
+        sufixo = (
+            self.campo_codigo_sufixo
+            .get()
+            .strip()
+        )
+
+        if len(prefixo) != 1:
+            raise ValueError(
+                "O símbolo inicial do código secreto "
+                "deve possuir exatamente um caractere."
+            )
+
+        if len(sufixo) != 1:
+            raise ValueError(
+                "O símbolo final do código secreto "
+                "deve possuir exatamente um caractere."
+            )
+
+        if prefixo.isspace() or sufixo.isspace():
+            raise ValueError(
+                "Os símbolos inicial e final não podem "
+                "ser espaços."
+            )
+
+        if prefixo == sufixo:
+            raise ValueError(
+                "Os símbolos inicial e final devem "
+                "ser diferentes."
+            )
+
+        simbolos: dict[str, str] = {}
+
+        for numero, campo in (
+            self.campos_codigo_simbolos.items()
+        ):
+            simbolo = (
+                campo.get()
+                .strip()
+                .upper()
+            )
+
+            if len(simbolo) != 1:
+                raise ValueError(
+                    f"O símbolo do número {numero} deve "
+                    "possuir exatamente um caractere."
+                )
+
+            if simbolo.isspace():
+                raise ValueError(
+                    f"O símbolo do número {numero} não "
+                    "pode ser um espaço."
+                )
+
+            simbolos[numero] = simbolo
+
+        valores = list(
+            simbolos.values()
+        )
+
+        if len(set(valores)) != len(valores):
+            raise ValueError(
+                "Cada número deve possuir um símbolo "
+                "diferente no código secreto."
+            )
+
+        return {
+            "ativo": bool(
+                self.variavel_codigo_ativo.get()
+            ),
+            "simbolos": simbolos,
+            "prefixo": prefixo,
+            "sufixo": sufixo,
+        }
 
     def criar_campo_limite(self) -> ctk.CTkEntry:
         """Cria o campo do limite da descrição."""
@@ -420,6 +1153,8 @@ class SettingsWindow(ctk.CTkToplevel):
             self.configuracoes["cores_base"],
         )
 
+        self.carregar_codigo_secreto()
+
         self.campo_limite.delete(0, "end")
         self.campo_limite.insert(
             0,
@@ -577,6 +1312,10 @@ class SettingsWindow(ctk.CTkToplevel):
 
                 "cores_base": self.ler_lista(
                     self.campo_cores
+                ),
+
+                "codigo_secreto": (
+                    self.ler_codigo_secreto()
                 ),
 
                 "limite_descricao": self.ler_limite(),

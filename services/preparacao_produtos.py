@@ -15,10 +15,14 @@ def preparar_produtos(
     """Prepara descrições e códigos dos produtos."""
 
     configuracoes = carregar_configuracoes()
+    configuracao_codigo = configuracoes.get(
+        "codigo_secreto"
+    )
 
     for produto in produtos:
         produto.codigo_custo = gerar_codigo_custo(
-            produto.valor_unitario
+            produto.valor_unitario,
+            configuracao=configuracao_codigo,
         )
 
         descricao_aprendida = (
@@ -38,7 +42,17 @@ def preparar_produtos(
                 configuracoes=configuracoes,
             )
 
-        produto.descricao_final = (
-            f"{descricao_base} "
-            f"{produto.codigo_custo}"
+        partes_descricao = [
+            descricao_base.strip()
+        ]
+
+        if produto.codigo_custo:
+            partes_descricao.append(
+                produto.codigo_custo
+            )
+
+        produto.descricao_final = " ".join(
+            parte
+            for parte in partes_descricao
+            if parte
         )

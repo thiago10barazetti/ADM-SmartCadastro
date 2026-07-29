@@ -25,3 +25,7 @@ assets/icons/codigo_preenchido.png
 assets/icons/codigo_vazio.png
 # Arquivos gerados durante testes
 logs/
+
+# Arquivos gerados pelo PyInstaller
+build/
+dist/
