@@ -2,6 +2,8 @@ import csv
 from datetime import datetime
 from pathlib import Path
 
+from services.app_paths import PASTA_RELATORIOS
+
 
 class RelatorioExecucao:
     """Registra e salva os resultados de uma execução."""
@@ -31,7 +33,9 @@ class RelatorioExecucao:
         self.modo = modo
         self.total_itens = total_itens
         self.inicio = datetime.now()
-        self.registros: list[dict[str, str | int]] = []
+        self.registros: list[
+            dict[str, str | int]
+        ] = []
         self.caminho_salvo: Path | None = None
 
     def registrar(
@@ -83,15 +87,7 @@ class RelatorioExecucao:
 
         fim = datetime.now()
 
-        raiz_projeto = (
-            Path(__file__).resolve().parents[1]
-        )
-        pasta_relatorios = (
-            raiz_projeto
-            / "logs"
-            / "relatorios"
-        )
-        pasta_relatorios.mkdir(
+        PASTA_RELATORIOS.mkdir(
             parents=True,
             exist_ok=True,
         )
@@ -102,7 +98,9 @@ class RelatorioExecucao:
         nome_arquivo = (
             f"cadastro_{identificador}_{self.modo}.csv"
         )
-        caminho = pasta_relatorios / nome_arquivo
+        caminho = (
+            PASTA_RELATORIOS / nome_arquivo
+        )
 
         dados_globais = {
             "execucao": identificador,

@@ -678,7 +678,7 @@ class DiagnosticsWindow(ctk.CTkToplevel):
         )
 
     def criar_secao_calibrador(self) -> None:
-        """Cria a seção para executar uma nova calibração."""
+        """Cria a seção com as três etapas de calibração."""
 
         secao = ctk.CTkFrame(
             self.area_rolagem,
@@ -693,14 +693,16 @@ class DiagnosticsWindow(ctk.CTkToplevel):
             pady=(16, 0),
             sticky="ew",
         )
-        secao.grid_columnconfigure(
-            0,
-            weight=1,
-        )
+
+        for coluna in range(3):
+            secao.grid_columnconfigure(
+                coluna,
+                weight=1,
+            )
 
         titulo = ctk.CTkLabel(
             secao,
-            text="Nova calibração",
+            text="Configurar este computador",
             anchor="w",
             text_color=COR_TEXTO,
             font=ctk.CTkFont(
@@ -712,6 +714,7 @@ class DiagnosticsWindow(ctk.CTkToplevel):
         titulo.grid(
             row=0,
             column=0,
+            columnspan=3,
             padx=16,
             pady=(14, 4),
             sticky="ew",
@@ -720,13 +723,14 @@ class DiagnosticsWindow(ctk.CTkToplevel):
         explicacao = ctk.CTkLabel(
             secao,
             text=(
-                "Use somente quando a resolução, o tamanho da janela do ADM "
-                "ou a posição da tabela tiver mudado. O SmartCadastro será "
-                "fechado antes de abrir o calibrador."
+                "Cada computador começa sem calibração. Execute as "
+                "três etapas abaixo depois de abrir o Cadastro de "
+                "Produtos no ADM. O SmartCadastro será fechado ao "
+                "abrir uma ferramenta."
             ),
             anchor="w",
             justify="left",
-            wraplength=760,
+            wraplength=850,
             text_color=COR_TEXTO_SECUNDARIO,
             font=ctk.CTkFont(
                 family=FONTE_PRINCIPAL,
@@ -736,36 +740,88 @@ class DiagnosticsWindow(ctk.CTkToplevel):
         explicacao.grid(
             row=1,
             column=0,
+            columnspan=3,
             padx=16,
-            pady=(0, 14),
+            pady=(0, 12),
             sticky="ew",
         )
 
-        botao_calibrar = ctk.CTkButton(
-            secao,
-            text="Abrir calibrador",
-            width=170,
-            height=36,
-            corner_radius=4,
-            fg_color=COR_FUNDO,
-            hover_color=COR_FUNDO_SECUNDARIO,
-            border_width=1,
-            border_color=COR_BORDA_ESCURA,
-            text_color=COR_TEXTO,
-            font=ctk.CTkFont(
-                family=FONTE_PRINCIPAL,
-                size=TAMANHO_BOTAO,
-                weight="bold",
+        botoes = (
+            (
+                "1. Calibrar pontos",
+                "--calibrar",
+                "calibração dos pontos",
             ),
-            command=self.abrir_calibrador,
+            (
+                "2. Capturar códigos",
+                "--capturar-codigos",
+                "captura da coluna Código",
+            ),
+            (
+                "3. Capturar vínculos",
+                "--capturar-vinculos",
+                "captura da coluna Vinc.",
+            ),
         )
-        botao_calibrar.grid(
-            row=1,
-            column=1,
-            padx=16,
-            pady=(0, 14),
-            sticky="e",
-        )
+
+        for coluna, (
+            texto,
+            argumento,
+            nome,
+        ) in enumerate(botoes):
+            botao = ctk.CTkButton(
+                secao,
+                text=texto,
+                height=38,
+                corner_radius=4,
+                fg_color=(
+                    COR_AZUL
+                    if coluna == 0
+                    else COR_FUNDO
+                ),
+                hover_color=(
+                    COR_AZUL_HOVER
+                    if coluna == 0
+                    else COR_FUNDO_SECUNDARIO
+                ),
+                border_width=(
+                    0
+                    if coluna == 0
+                    else 1
+                ),
+                border_color=COR_BORDA_ESCURA,
+                text_color=(
+                    COR_TEXTO_BOTAO
+                    if coluna == 0
+                    else COR_TEXTO
+                ),
+                font=ctk.CTkFont(
+                    family=FONTE_PRINCIPAL,
+                    size=TAMANHO_BOTAO,
+                    weight="bold",
+                ),
+                command=lambda arg=argumento, titulo=nome: (
+                    self.abrir_ferramenta_calibracao(
+                        arg,
+                        titulo,
+                    )
+                ),
+            )
+            botao.grid(
+                row=2,
+                column=coluna,
+                padx=(
+                    (16, 5)
+                    if coluna == 0
+                    else (
+                        (5, 5)
+                        if coluna == 1
+                        else (5, 16)
+                    )
+                ),
+                pady=(0, 14),
+                sticky="ew",
+            )
 
     def atualizar_diagnostico(self) -> None:
         """Recarrega e avalia a calibração."""
@@ -1371,34 +1427,20 @@ class DiagnosticsWindow(ctk.CTkToplevel):
             text="Testar leitura",
         )
 
-    def abrir_calibrador(self) -> None:
-        """Fecha o aplicativo e abre o calibrador."""
-
-        raiz_projeto = (
-            Path(__file__).resolve().parents[1]
-        )
-        caminho_calibrador = (
-            raiz_projeto / "calibrar.py"
-        )
-
-        if not caminho_calibrador.exists():
-            messagebox.showerror(
-                "Calibrador não encontrado",
-                (
-                    "O arquivo calibrar.py não foi encontrado "
-                    "na pasta principal do projeto."
-                ),
-                parent=self,
-            )
-            return
+    def abrir_ferramenta_calibracao(
+        self,
+        argumento: str,
+        nome: str,
+    ) -> None:
+        """Fecha o aplicativo e abre uma ferramenta de calibração."""
 
         confirmar = messagebox.askyesno(
-            "Abrir calibrador",
+            "Abrir ferramenta",
             (
-                "O ADM SmartCadastro será fechado e o "
-                "calibrador será aberto.\n\n"
-                "Depois da calibração, abra novamente o "
-                "programa principal.\n\n"
+                f"O ADM SmartCadastro será fechado e a {nome} "
+                "será aberta.\n\n"
+                "Depois de concluir esta etapa, abra novamente "
+                "o programa principal.\n\n"
                 "Deseja continuar?"
             ),
             parent=self,
@@ -1407,18 +1449,35 @@ class DiagnosticsWindow(ctk.CTkToplevel):
         if not confirmar:
             return
 
+        if getattr(sys, "frozen", False):
+            comando = [
+                sys.executable,
+                argumento,
+            ]
+            pasta_execucao = (
+                Path(sys.executable).resolve().parent
+            )
+
+        else:
+            raiz_projeto = (
+                Path(__file__).resolve().parents[1]
+            )
+            comando = [
+                sys.executable,
+                str(raiz_projeto / "app.py"),
+                argumento,
+            ]
+            pasta_execucao = raiz_projeto
+
         try:
             subprocess.Popen(
-                [
-                    sys.executable,
-                    str(caminho_calibrador),
-                ],
-                cwd=str(raiz_projeto),
+                comando,
+                cwd=str(pasta_execucao),
             )
 
         except OSError as erro:
             messagebox.showerror(
-                "Erro ao abrir calibrador",
+                "Erro ao abrir ferramenta",
                 str(erro),
                 parent=self,
             )

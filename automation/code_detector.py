@@ -7,8 +7,10 @@ from typing import Any
 import pyautogui
 from PIL import Image
 
-
-RAIZ_PROJETO = Path(__file__).resolve().parent.parent
+from services.app_paths import (
+    PASTA_LOGS_CODIGOS,
+    resolver_caminho_configuracao,
+)
 
 SETAS_PARA_VOLTAR_AO_INICIO = 100
 
@@ -121,7 +123,9 @@ def resolver_caminho(
     if caminho.is_absolute():
         return caminho
 
-    return RAIZ_PROJETO / caminho
+    return resolver_caminho_configuracao(
+        caminho_salvo
+    )
 
 
 def recortar_area_interna(
@@ -404,11 +408,7 @@ def localizar_celula_selecionada(
     )
 
     if melhor_proporcao < limite_minimo:
-        pasta_logs = (
-            RAIZ_PROJETO
-            / "logs"
-            / "codigos"
-        )
+        pasta_logs = PASTA_LOGS_CODIGOS
 
         pasta_logs.mkdir(
             parents=True,
@@ -749,11 +749,7 @@ def detectar_estado_codigo(
         cor_fundo=cor_fundo,
     )
 
-    pasta_logs = (
-        RAIZ_PROJETO
-        / "logs"
-        / "codigos"
-    )
+    pasta_logs = PASTA_LOGS_CODIGOS
 
     pasta_logs.mkdir(
         parents=True,

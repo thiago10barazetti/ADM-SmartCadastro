@@ -1,15 +1,11 @@
 import json
 from datetime import datetime
-from pathlib import Path
 from typing import Any
 
 import pyautogui
 
+from services.app_paths import CAMINHO_CALIBRACAO
 
-CAMINHO_CALIBRACAO = (
-    Path(__file__).resolve().parent
-    / "calibration.json"
-)
 
 PONTOS_OBRIGATORIOS = (
     "mais_primeira_linha",
@@ -21,7 +17,7 @@ PONTOS_OBRIGATORIOS = (
 
 
 def carregar_calibracao() -> dict[str, Any]:
-    """Carrega a calibração salva anteriormente."""
+    """Carrega a calibração persistente do usuário."""
 
     if not CAMINHO_CALIBRACAO.exists():
         return {
@@ -97,7 +93,12 @@ def validar_pontos(
 def salvar_calibracao(
     pontos: dict[str, dict[str, int]],
 ) -> dict[str, Any]:
-    """Salva as coordenadas e cálculos da calibração."""
+    """
+    Salva coordenadas e cálculos sem apagar os detectores.
+
+    As seções vinculo e codigo_produto já existentes são
+    preservadas quando os pontos forem recalibrados.
+    """
 
     validar_pontos(pontos)
 
@@ -121,8 +122,10 @@ def salvar_calibracao(
     )
 
     tamanho_tela = pyautogui.size()
+    dados_anteriores = carregar_calibracao()
 
     dados = {
+        **dados_anteriores,
         "versao": 1,
         "salvo_em": datetime.now().isoformat(
             timespec="seconds"
@@ -147,6 +150,11 @@ def salvar_calibracao(
             ),
         },
     }
+
+    CAMINHO_CALIBRACAO.parent.mkdir(
+        parents=True,
+        exist_ok=True,
+    )
 
     with CAMINHO_CALIBRACAO.open(
         "w",

@@ -1,0 +1,17 @@
+ADM SMARTCADASTRO - PREPARAÇÃO DO INSTALADOR COMERCIAL LIMPO
+
+Este pacote contém somente arquivos de código.
+
+Ele NÃO contém:
+- banco de dados da loja;
+- calibration.json;
+- imagens de calibração;
+- relatórios;
+- capturas de diagnóstico.
+
+Ao abrir o programa pela primeira vez, cada computador cria sua própria estrutura em:
+%LOCALAPPDATA%\ADM SmartCadastro
+
+A primeira instalação começa com banco novo, configurações padrão, relatórios vazios e calibração ausente.
+
+Importante: os arquivos antigos existentes dentro do projeto não são apagados nem importados automaticamente.

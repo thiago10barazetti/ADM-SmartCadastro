@@ -1,5 +1,4 @@
 import json
-from pathlib import Path
 from tkinter import messagebox
 
 import customtkinter as ctk
@@ -9,6 +8,7 @@ from automation.calibration_repository import (
     CAMINHO_CALIBRACAO,
     carregar_calibracao,
 )
+from services.app_paths import PASTA_TEMPLATES
 
 
 pyautogui.FAILSAFE = True
@@ -18,11 +18,7 @@ pyautogui.PAUSE = 0.15
 LARGURA_CAPTURA = 18
 ALTURA_CAPTURA = 12
 
-PASTA_ICONES = (
-    Path(__file__).resolve().parent
-    / "assets"
-    / "icons"
-)
+PASTA_ICONES = PASTA_TEMPLATES
 
 ARQUIVOS = {
     "ativo": PASTA_ICONES / "vinculo_ativo.png",
@@ -476,10 +472,10 @@ class LinkCaptureWindow(ctk.CTk):
             "largura_captura": LARGURA_CAPTURA,
             "altura_captura": ALTURA_CAPTURA,
             "template_ativo": (
-                "assets/icons/vinculo_ativo.png"
+                "vinculo_ativo.png"
             ),
             "template_inativo": (
-                "assets/icons/vinculo_inativo.png"
+                "vinculo_inativo.png"
             ),
         }
 

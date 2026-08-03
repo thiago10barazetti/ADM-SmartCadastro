@@ -1,11 +1,6 @@
 import sqlite3
-from pathlib import Path
 
-
-CAMINHO_BANCO = (
-    Path(__file__).resolve().parent
-    / "adm_smartcadastro.db"
-)
+from services.app_paths import CAMINHO_BANCO
 
 
 def normalizar_texto(texto: str) -> str:
@@ -17,9 +12,16 @@ def normalizar_texto(texto: str) -> str:
 
 
 def conectar() -> sqlite3.Connection:
-    """Abre uma conexão com o banco local."""
+    """Abre uma conexão com o banco persistente do usuário."""
 
-    return sqlite3.connect(CAMINHO_BANCO)
+    CAMINHO_BANCO.parent.mkdir(
+        parents=True,
+        exist_ok=True,
+    )
+
+    return sqlite3.connect(
+        CAMINHO_BANCO
+    )
 
 
 def inicializar_banco() -> None:

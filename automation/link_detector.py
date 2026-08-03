@@ -5,8 +5,10 @@ from typing import Any
 import pyautogui
 from PIL import Image, ImageChops, ImageStat
 
-
-RAIZ_PROJETO = Path(__file__).resolve().parent.parent
+from services.app_paths import (
+    PASTA_LOGS_VINCULOS,
+    resolver_caminho_configuracao,
+)
 
 # O detector examinará pequenas variações de posição.
 DESLOCAMENTOS_X = (-1, 0, 1)
@@ -88,7 +90,9 @@ def resolver_caminho_template(
     if caminho.is_absolute():
         return caminho
 
-    return RAIZ_PROJETO / caminho
+    return resolver_caminho_configuracao(
+        caminho_relativo
+    )
 
 
 def pixel_eh_verde(
@@ -443,11 +447,7 @@ def detectar_estado_vinculo(
         altura=altura,
     )
 
-    pasta_logs = (
-        RAIZ_PROJETO
-        / "logs"
-        / "vinculos"
-    )
+    pasta_logs = PASTA_LOGS_VINCULOS
 
     pasta_logs.mkdir(
         parents=True,

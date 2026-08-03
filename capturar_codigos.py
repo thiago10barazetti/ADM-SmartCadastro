@@ -1,5 +1,4 @@
 import json
-from pathlib import Path
 from time import sleep
 from tkinter import messagebox
 
@@ -10,6 +9,7 @@ from automation.calibration_repository import (
     CAMINHO_CALIBRACAO,
     carregar_calibracao,
 )
+from services.app_paths import PASTA_TEMPLATES
 
 
 pyautogui.FAILSAFE = True
@@ -19,13 +19,7 @@ pyautogui.PAUSE = 0.15
 LARGURA_CAPTURA = 36
 ALTURA_CAPTURA = 14
 
-RAIZ_PROJETO = Path(__file__).resolve().parent
-
-PASTA_CAPTURAS = (
-    RAIZ_PROJETO
-    / "assets"
-    / "icons"
-)
+PASTA_CAPTURAS = PASTA_TEMPLATES
 
 ARQUIVOS = {
     "preenchido": (
@@ -520,11 +514,9 @@ class CodeCaptureWindow(ctk.CTk):
                 ALTURA_CAPTURA
             ),
             "template_preenchido": (
-                "assets/icons/"
                 "codigo_preenchido.png"
             ),
             "template_vazio": (
-                "assets/icons/"
                 "codigo_vazio.png"
             ),
             "captura_com_linha_selecionada": True,

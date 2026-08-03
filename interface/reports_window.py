@@ -7,6 +7,7 @@ from tkinter import messagebox, ttk
 
 import customtkinter as ctk
 
+from services.app_paths import PASTA_RELATORIOS
 from interface.styles import (
     COR_AZUL,
     COR_AZUL_HOVER,
@@ -54,11 +55,7 @@ class ReportsWindow(ctk.CTkToplevel):
         self.minsize(980, 620)
         self.configure(fg_color=COR_FUNDO)
 
-        self.pasta_relatorios = (
-            Path(__file__).resolve().parents[1]
-            / "logs"
-            / "relatorios"
-        )
+        self.pasta_relatorios = PASTA_RELATORIOS
 
         self.caminho_atual: Path | None = None
         self.registros_atuais: list[
