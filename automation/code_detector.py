@@ -1,3 +1,4 @@
+
 from dataclasses import dataclass
 from pathlib import Path
 from statistics import median
@@ -8,7 +9,6 @@ import pyautogui
 from PIL import Image
 
 from services.app_paths import (
-    PASTA_LOGS_CODIGOS,
     resolver_caminho_configuracao,
 )
 
@@ -22,7 +22,7 @@ TEMPO_APOS_SELECAO = 0.60
 
 @dataclass(frozen=True)
 class ResultadoCodigo:
-    """Resultado da análise da coluna Código."""
+    """Resultado da anÃ¡lise da coluna CÃ³digo."""
 
     estado: str
     score_atual: float
@@ -32,14 +32,14 @@ class ResultadoCodigo:
     limite_vazio: float
     margem: float
     deslocamento_y: int
-    caminho_captura: Path
+    caminho_captura: Path | None
 
 
 def obter_geometria_tabela(
     calibracao: dict[str, Any],
 ) -> tuple[int, int, int]:
     """
-    Retorna a posição da primeira linha, a altura
+    Retorna a posiÃ§Ã£o da primeira linha, a altura
     das linhas e o limite inferior da tabela.
     """
 
@@ -62,7 +62,7 @@ def obter_geometria_tabela(
 
     if primeira is None or segunda is None:
         raise ValueError(
-            "A calibração das linhas está incompleta."
+            "A calibraÃ§Ã£o das linhas estÃ¡ incompleta."
         )
 
     primeira_y = int(
@@ -79,7 +79,7 @@ def obter_geometria_tabela(
 
     if altura_linha < 5:
         raise ValueError(
-            "A altura calibrada das linhas é inválida."
+            "A altura calibrada das linhas Ã© invÃ¡lida."
         )
 
     if limite is not None:
@@ -163,7 +163,7 @@ def obter_cor_fundo_selecao(
 ) -> tuple[int, int, int]:
     """
     Descobre a cor real do fundo selecionado usando
-    as duas capturas de calibração.
+    as duas capturas de calibraÃ§Ã£o.
     """
 
     pixels: list[
@@ -186,7 +186,7 @@ def obter_cor_fundo_selecao(
 
     if not pixels:
         raise ValueError(
-            "As capturas de calibração estão vazias."
+            "As capturas de calibraÃ§Ã£o estÃ£o vazias."
         )
 
     vermelho = round(
@@ -222,7 +222,7 @@ def cor_proxima(
     referencia: tuple[int, int, int],
     tolerancia: int,
 ) -> bool:
-    """Verifica se duas cores são semelhantes."""
+    """Verifica se duas cores sÃ£o semelhantes."""
 
     return max(
         abs(cor[0] - referencia[0]),
@@ -275,7 +275,7 @@ def selecionar_item(
     numero_item: int,
 ) -> Image.Image:
     """
-    Volta ao primeiro produto e desce até
+    Volta ao primeiro produto e desce atÃ©
     o produto solicitado.
     """
 
@@ -327,8 +327,8 @@ def localizar_celula_selecionada(
     proporcao_referencia: float,
 ) -> tuple[Image.Image, int, float]:
     """
-    Procura a célula selecionada em toda a altura
-    da tabela, sem presumir sua posição depois da rolagem.
+    Procura a cÃ©lula selecionada em toda a altura
+    da tabela, sem presumir sua posiÃ§Ã£o depois da rolagem.
     """
 
     (
@@ -394,7 +394,7 @@ def localizar_celula_selecionada(
 
     if not resultados:
         raise RuntimeError(
-            "Não foi possível analisar a área da tabela."
+            "NÃ£o foi possÃ­vel analisar a Ã¡rea da tabela."
         )
 
     melhor_y, melhor_proporcao = max(
@@ -408,26 +408,14 @@ def localizar_celula_selecionada(
     )
 
     if melhor_proporcao < limite_minimo:
-        pasta_logs = PASTA_LOGS_CODIGOS
-
-        pasta_logs.mkdir(
-            parents=True,
-            exist_ok=True,
-        )
-
-        tela.save(
-            pasta_logs
-            / "tela_falha_localizacao.png"
-        )
-
         raise RuntimeError(
-            "Não foi possível localizar a célula "
+            "NÃ£o foi possÃ­vel localizar a cÃ©lula "
             "selecionada na tabela. "
             f"Melhor resultado: {melhor_proporcao:.3f}."
         )
 
     # Encontra toda a faixa vertical que pertence
-    # à mesma linha selecionada.
+    # Ã  mesma linha selecionada.
     limite_faixa = (
         melhor_proporcao * 0.78
     )
@@ -543,7 +531,7 @@ def calcular_score_texto(
     cor_fundo: tuple[int, int, int],
 ) -> float:
     """
-    Mede a quantidade de caracteres na célula
+    Mede a quantidade de caracteres na cÃ©lula
     selecionada.
     """
 
@@ -595,11 +583,11 @@ def detectar_estado_codigo(
     calibracao: dict[str, Any],
     numero_item: int,
 ) -> ResultadoCodigo:
-    """Identifica se a coluna Código está preenchida."""
+    """Identifica se a coluna CÃ³digo estÃ¡ preenchida."""
 
     if numero_item < 1:
         raise ValueError(
-            "O número do item deve ser maior que zero."
+            "O nÃºmero do item deve ser maior que zero."
         )
 
     configuracao = calibracao.get(
@@ -608,7 +596,7 @@ def detectar_estado_codigo(
 
     if not configuracao:
         raise ValueError(
-            "A coluna Código ainda não foi calibrada."
+            "A coluna CÃ³digo ainda nÃ£o foi calibrada."
         )
 
     coluna_x = int(
@@ -643,14 +631,14 @@ def detectar_estado_codigo(
 
     if not caminho_preenchido.exists():
         raise FileNotFoundError(
-            "Captura do código preenchido "
-            f"não encontrada: {caminho_preenchido}"
+            "Captura do cÃ³digo preenchido "
+            f"nÃ£o encontrada: {caminho_preenchido}"
         )
 
     if not caminho_vazio.exists():
         raise FileNotFoundError(
-            "Captura do código vazio "
-            f"não encontrada: {caminho_vazio}"
+            "Captura do cÃ³digo vazio "
+            f"nÃ£o encontrada: {caminho_vazio}"
         )
 
     with Image.open(
@@ -749,21 +737,9 @@ def detectar_estado_codigo(
         cor_fundo=cor_fundo,
     )
 
-    pasta_logs = PASTA_LOGS_CODIGOS
-
-    pasta_logs.mkdir(
-        parents=True,
-        exist_ok=True,
-    )
-
-    caminho_captura = (
-        pasta_logs
-        / f"ultima_captura_item_{numero_item}.png"
-    )
-
-    imagem_atual.save(
-        caminho_captura
-    )
+    # A imagem atual existe somente em memória.
+    # Nenhuma captura de execução é salva automaticamente.
+    caminho_captura = None
 
     distancia_preenchido = abs(
         score_atual

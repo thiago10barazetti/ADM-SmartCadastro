@@ -1,3 +1,4 @@
+
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -6,18 +7,17 @@ import pyautogui
 from PIL import Image, ImageChops, ImageStat
 
 from services.app_paths import (
-    PASTA_LOGS_VINCULOS,
     resolver_caminho_configuracao,
 )
 
-# O detector examinará pequenas variações de posição.
+# O detector examinarÃ¡ pequenas variaÃ§Ãµes de posiÃ§Ã£o.
 DESLOCAMENTOS_X = (-1, 0, 1)
 DESLOCAMENTOS_Y = (-4, -3, -2, -1, 0, 1, 2, 3, 4)
 
 
 @dataclass(frozen=True)
 class ResultadoVinculo:
-    """Resultado da identificação visual do vínculo."""
+    """Resultado da identificaÃ§Ã£o visual do vÃ­nculo."""
 
     estado: str
 
@@ -34,18 +34,18 @@ class ResultadoVinculo:
     pixels_verdes: int
     deslocamento_x: int
     deslocamento_y: int
-    caminho_captura: Path
+    caminho_captura: Path | None
 
 
 def calcular_posicao_linha(
     calibracao: dict[str, Any],
     numero_item: int,
 ) -> tuple[int, int]:
-    """Calcula a posição esperada da linha."""
+    """Calcula a posiÃ§Ã£o esperada da linha."""
 
     if numero_item < 1:
         raise ValueError(
-            "O número do item deve ser maior que zero."
+            "O nÃºmero do item deve ser maior que zero."
         )
 
     pontos = calibracao.get("pontos", {})
@@ -55,7 +55,7 @@ def calcular_posicao_linha(
 
     if primeira is None or segunda is None:
         raise ValueError(
-            "A calibração das linhas está incompleta."
+            "A calibraÃ§Ã£o das linhas estÃ¡ incompleta."
         )
 
     primeira_y = int(primeira["y"])
@@ -67,7 +67,7 @@ def calcular_posicao_linha(
 
     if altura_linha < 5:
         raise ValueError(
-            "A altura calibrada da linha é inválida."
+            "A altura calibrada da linha Ã© invÃ¡lida."
         )
 
     x = int(primeira["x"])
@@ -101,7 +101,7 @@ def pixel_eh_verde(
     azul: int,
 ) -> bool:
     """
-    Verifica se um pixel pertence ao ícone verde.
+    Verifica se um pixel pertence ao Ã­cone verde.
 
     A regra aceita diferentes tonalidades utilizadas
     pelo ADM, inclusive verdes mais escuros.
@@ -147,7 +147,7 @@ def contar_pixels_verdes(
 def preparar_imagem_comparacao(
     imagem: Image.Image,
 ) -> Image.Image:
-    """Prepara a imagem para comparação auxiliar."""
+    """Prepara a imagem para comparaÃ§Ã£o auxiliar."""
 
     imagem_rgb = imagem.convert("RGB")
 
@@ -162,10 +162,10 @@ def calcular_distancia(
     imagem_modelo: Image.Image,
 ) -> float:
     """
-    Calcula a diferença visual entre duas imagens.
+    Calcula a diferenÃ§a visual entre duas imagens.
 
-    Essa informação é apenas auxiliar. A decisão principal
-    é feita pela quantidade de verde.
+    Essa informaÃ§Ã£o Ã© apenas auxiliar. A decisÃ£o principal
+    Ã© feita pela quantidade de verde.
     """
 
     atual = preparar_imagem_comparacao(
@@ -200,7 +200,7 @@ def limitar_regiao(
     largura_tela: int,
     altura_tela: int,
 ) -> tuple[int, int, int, int]:
-    """Mantém a região dentro dos limites da tela."""
+    """MantÃ©m a regiÃ£o dentro dos limites da tela."""
 
     esquerda = max(0, esquerda)
     topo = max(0, topo)
@@ -227,9 +227,9 @@ def encontrar_melhor_captura(
     altura: int,
 ) -> tuple[Image.Image, int, float, int, int]:
     """
-    Procura o ícone alguns pixels ao redor da posição esperada.
+    Procura o Ã­cone alguns pixels ao redor da posiÃ§Ã£o esperada.
 
-    Retorna a região com a maior quantidade de verde.
+    Retorna a regiÃ£o com a maior quantidade de verde.
     """
 
     largura_tela, altura_tela = tela.size
@@ -289,7 +289,7 @@ def encontrar_melhor_captura(
 
     if melhor_imagem is None:
         raise RuntimeError(
-            "Não foi possível capturar a região do vínculo."
+            "NÃ£o foi possÃ­vel capturar a regiÃ£o do vÃ­nculo."
         )
 
     return (
@@ -305,7 +305,7 @@ def detectar_estado_vinculo(
     calibracao: dict[str, Any],
     numero_item: int,
 ) -> ResultadoVinculo:
-    """Captura e identifica o vínculo do item informado."""
+    """Captura e identifica o vÃ­nculo do item informado."""
 
     configuracao_vinculo = calibracao.get(
         "vinculo"
@@ -313,7 +313,7 @@ def detectar_estado_vinculo(
 
     if not configuracao_vinculo:
         raise ValueError(
-            "As imagens dos vínculos ainda não foram calibradas."
+            "As imagens dos vÃ­nculos ainda nÃ£o foram calibradas."
         )
 
     _, linha_y = calcular_posicao_linha(
@@ -340,7 +340,7 @@ def detectar_estado_vinculo(
     )
 
     # Impede uma captura grande o suficiente
-    # para alcançar o botão + da coluna vizinha.
+    # para alcanÃ§ar o botÃ£o + da coluna vizinha.
     largura = max(
         16,
         min(largura, 20),
@@ -365,13 +365,13 @@ def detectar_estado_vinculo(
 
     if not caminho_ativo.exists():
         raise FileNotFoundError(
-            "Imagem do vínculo ativo não encontrada: "
+            "Imagem do vÃ­nculo ativo nÃ£o encontrada: "
             f"{caminho_ativo}"
         )
 
     if not caminho_inativo.exists():
         raise FileNotFoundError(
-            "Imagem do vínculo inativo não encontrada: "
+            "Imagem do vÃ­nculo inativo nÃ£o encontrada: "
             f"{caminho_inativo}"
         )
 
@@ -413,12 +413,12 @@ def detectar_estado_vinculo(
     if diferenca_modelos <= 0.005:
         raise ValueError(
             "As capturas ativa e inativa possuem quase "
-            "a mesma quantidade de verde. Refaça a captura "
-            "dos vínculos."
+            "a mesma quantidade de verde. RefaÃ§a a captura "
+            "dos vÃ­nculos."
         )
 
-    # Utiliza uma parte pequena da diferença porque
-    # o ícone pode ficar alguns pixels fora do centro.
+    # Utiliza uma parte pequena da diferenÃ§a porque
+    # o Ã­cone pode ficar alguns pixels fora do centro.
     limite_verde_ativo = (
         percentual_inativo_modelo
         + diferenca_modelos * 0.08
@@ -429,8 +429,8 @@ def detectar_estado_vinculo(
         + diferenca_modelos * 0.025
     )
 
-    # Uma única captura da tela é usada para todas
-    # as pequenas tentativas de posição.
+    # Uma Ãºnica captura da tela Ã© usada para todas
+    # as pequenas tentativas de posiÃ§Ã£o.
     tela = pyautogui.screenshot()
 
     (
@@ -447,21 +447,9 @@ def detectar_estado_vinculo(
         altura=altura,
     )
 
-    pasta_logs = PASTA_LOGS_VINCULOS
-
-    pasta_logs.mkdir(
-        parents=True,
-        exist_ok=True,
-    )
-
-    caminho_captura = (
-        pasta_logs
-        / f"ultima_captura_item_{numero_item}.png"
-    )
-
-    imagem_atual.save(
-        caminho_captura
-    )
+    # A imagem atual existe somente em memória.
+    # Nenhuma captura de execução é salva automaticamente.
+    caminho_captura = None
 
     distancia_ativo = calcular_distancia(
         imagem_atual,
