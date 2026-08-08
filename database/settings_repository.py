@@ -3,6 +3,14 @@ import json
 
 from abbreviation.defaults import CONFIGURACOES_PADRAO
 from database.description_repository import conectar
+from services.secure_storage import (
+    desproteger_texto,
+    proteger_texto,
+)
+
+
+CHAVE_CODIGO_SECRETO = "codigo_secreto"
+PREFIXO_PROTEGIDO = "dpapi:"
 
 
 def normalizar_item(texto: str) -> str:
@@ -11,6 +19,56 @@ def normalizar_item(texto: str) -> str:
     return " ".join(
         texto.upper().strip().split()
     )
+
+
+def serializar_configuracao(
+    chave: str,
+    valor,
+) -> str:
+    """Prepara uma configuração para armazenamento."""
+
+    valor_json = json.dumps(
+        valor,
+        ensure_ascii=False,
+    )
+
+    if chave == CHAVE_CODIGO_SECRETO:
+        return (
+            PREFIXO_PROTEGIDO
+            + proteger_texto(valor_json)
+        )
+
+    return valor_json
+
+
+def desserializar_configuracao(
+    chave: str,
+    valor_salvo: str,
+):
+    """
+    Recupera uma configuração armazenada.
+
+    Também aceita o formato antigo do código secreto,
+    salvo diretamente como JSON.
+    """
+
+    if (
+        chave == CHAVE_CODIGO_SECRETO
+        and valor_salvo.startswith(
+            PREFIXO_PROTEGIDO
+        )
+    ):
+        conteudo_protegido = valor_salvo[
+            len(PREFIXO_PROTEGIDO):
+        ]
+
+        valor_json = desproteger_texto(
+            conteudo_protegido
+        )
+
+        return json.loads(valor_json)
+
+    return json.loads(valor_salvo)
 
 
 def inicializar_configuracoes() -> None:
@@ -29,9 +87,9 @@ def inicializar_configuracoes() -> None:
         )
 
         for chave, valor in CONFIGURACOES_PADRAO.items():
-            valor_json = json.dumps(
+            valor_salvo = serializar_configuracao(
+                chave,
                 valor,
-                ensure_ascii=False,
             )
 
             conexao.execute(
@@ -44,7 +102,7 @@ def inicializar_configuracoes() -> None:
                 """,
                 (
                     chave,
-                    valor_json,
+                    valor_salvo,
                 ),
             )
 
@@ -58,6 +116,8 @@ def carregar_configuracoes() -> dict:
         CONFIGURACOES_PADRAO
     )
 
+    codigo_legado = None
+
     with conectar() as conexao:
         resultados = conexao.execute(
             """
@@ -66,17 +126,44 @@ def carregar_configuracoes() -> dict:
             """
         ).fetchall()
 
-    for chave, valor_json in resultados:
+    for chave, valor_salvo in resultados:
         if chave not in configuracoes:
             continue
 
         try:
-            configuracoes[chave] = json.loads(
-                valor_json
+            valor = desserializar_configuracao(
+                chave,
+                valor_salvo,
             )
 
-        except json.JSONDecodeError:
+            configuracoes[chave] = valor
+
+            if (
+                chave == CHAVE_CODIGO_SECRETO
+                and not valor_salvo.startswith(
+                    PREFIXO_PROTEGIDO
+                )
+            ):
+                codigo_legado = copy.deepcopy(
+                    valor
+                )
+
+        except (
+            json.JSONDecodeError,
+            ValueError,
+            OSError,
+            UnicodeDecodeError,
+        ):
             continue
+
+    if codigo_legado is not None:
+        salvar_configuracoes(
+            {
+                CHAVE_CODIGO_SECRETO: (
+                    codigo_legado
+                )
+            }
+        )
 
     return configuracoes
 
@@ -88,9 +175,9 @@ def salvar_configuracoes(
 
     with conectar() as conexao:
         for chave, valor in configuracoes.items():
-            valor_json = json.dumps(
+            valor_salvo = serializar_configuracao(
+                chave,
                 valor,
-                ensure_ascii=False,
             )
 
             conexao.execute(
@@ -109,7 +196,7 @@ def salvar_configuracoes(
                 """,
                 (
                     chave,
-                    valor_json,
+                    valor_salvo,
                 ),
             )
 
