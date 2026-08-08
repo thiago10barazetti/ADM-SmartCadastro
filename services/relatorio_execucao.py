@@ -17,8 +17,6 @@ class RelatorioExecucao:
         "total_itens",
         "item",
         "referencia",
-        "codigo_barras",
-        "descricao_original",
         "descricao_final",
         "resultado_item",
         "detalhe",
@@ -53,14 +51,6 @@ class RelatorioExecucao:
                 "referencia": self.obter_texto(
                     produto,
                     "referencia",
-                ),
-                "codigo_barras": self.obter_texto(
-                    produto,
-                    "codigo_barras",
-                ),
-                "descricao_original": self.obter_texto(
-                    produto,
-                    "descricao_original",
                 ),
                 "descricao_final": self.obter_texto(
                     produto,
@@ -119,8 +109,6 @@ class RelatorioExecucao:
             {
                 "item": "",
                 "referencia": "",
-                "codigo_barras": "",
-                "descricao_original": "",
                 "descricao_final": "",
                 "resultado_item": "",
                 "detalhe": (
