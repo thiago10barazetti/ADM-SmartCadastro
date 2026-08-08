@@ -327,10 +327,10 @@ class SettingsWindow(ctk.CTkToplevel):
             ),
         )
         self.switch_codigo_ativo.grid(
-            row=0,
-            column=1,
-            padx=(18, 0),
-            sticky="e",
+            row=1,
+            column=0,
+            pady=(10, 0),
+            sticky="w",
         )
 
         self.label_estado_codigo = ctk.CTkLabel(
