@@ -5,26 +5,29 @@ venv/
 # Cache do Python
 __pycache__/
 *.pyc
+*.pyo
+*.pyd
 
 # Configurações do VS Code
 .vscode/
 
-# Logs
-logs/*.log
-
-# Banco de dados local
+# Bancos de dados locais
 *.db
+*.sqlite
+*.sqlite3
+
+# Calibrações locais antigas
+automation/calibration.json
+assets/icons/codigo_*.png
+assets/icons/vinculo_*.png
+
+# Dados gerados localmente
+logs/
+reports/
+calibration/
 
 # Arquivos temporários
 *.tmp
-
-automation/calibration.json
-assets/icons/vinculo_ativo.png
-assets/icons/vinculo_inativo.png
-assets/icons/codigo_preenchido.png
-assets/icons/codigo_vazio.png
-# Arquivos gerados durante testes
-logs/
 
 # Arquivos gerados pelo PyInstaller
 build/
