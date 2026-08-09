@@ -32,3 +32,5 @@ calibration/
 # Arquivos gerados pelo PyInstaller
 build/
 dist/
+# Instaladores gerados
+installer/output/
